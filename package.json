@@ -1,0 +1,21 @@
+{
+  "name": "hoppscotch-fullstack",
+  "version": "1.0.0",
+  "description": "Hoppscotch Clone - Full Stack Application",
+  "private": true,
+  "workspaces": [
+    "hoppscotch-clone",
+    "hoppscotch-backend"
+  ],
+  "scripts": {
+    "dev:frontend": "cd hoppscotch-clone && npm run dev",
+    "dev:backend": "cd hoppscotch-backend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm install && cd hoppscotch-clone && npm install && cd ../hoppscotch-backend && npm install",
+    "build:frontend": "cd hoppscotch-clone && npm run build",
+    "start:backend": "cd hoppscotch-backend && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

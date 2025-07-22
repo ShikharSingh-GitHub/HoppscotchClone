@@ -1,0 +1,195 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #181818;
+  color: #fff;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard */
+  font-family: "Inter", sans-serif;
+}
+
+:root {
+  --accent-light-color: #818cf8;
+  --accent-dark-color: #4f46e5;
+  --accent-contrast-color: #fff;
+  --gradient-from-color: #818cf8;
+  --gradient-via-color: #6366f1;
+  --gradient-to-color: #4f46e5;
+
+  /* --search-bg: #262626; */
+  /* --search-hover-bg: #1f1f20; */
+}
+
+@theme {
+  --color-primary: #181818;
+  --color-search-bg: #262626;
+  --color-search-bg-hover: #1f1f20;
+  --color-btn: #6366f1;
+  --color-btn-hover: #4f46e5;
+  /* --color-secondary-btn: #182923;
+  --color-btn-color: #10b07b;
+  --color-secondary-btn-border: #124434; */
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+/* Force Light Theme for Tippy */
+.tippy-box[data-theme~="light"] {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #ddd !important;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1) !important;
+  padding: 2px 6px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+}
+
+.tippy-box[data-theme~="light"] .tippy-arrow {
+  color: white !important;
+}
+
+/* Add these custom tooltip styles */
+
+/* Light theme tooltip (white with black text) */
+.tippy-box[data-theme~="light"] {
+  background-color: white;
+  color: #111;
+  font-size: 0.65rem;
+  font-weight: normal;
+  padding: 0.15rem 0.3rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+/* Small tooltip class */
+.tooltip-small {
+  font-size: 0.65rem !important;
+  padding: 2px 5px !important;
+  max-width: 200px !important;
+  white-space: nowrap !important;
+}
+
+/* Custom Tippy styling to match your project */
+.tippy-box {
+  background-color: #1f2937; /* Dark background */
+  color: #f3f4f6; /* Light text */
+  border-radius: 4px;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.tippy-box[data-theme~="dark"] {
+  background-color: #1f2937;
+  color: #f3f4f6;
+}
+
+.tippy-arrow {
+  color: #1f2937;
+}
+
+::-webkit-scrollbar {
+  width: 1px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #39393a;
+  border-radius: 50px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7a7a7e;
+  border-radius: 50px;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* History response status colors */
+.success-response {
+  @apply bg-green-500/20 text-green-400;
+  background-color: rgba(34, 197, 94, 0.05); /* Very subtle background */
+}
+
+.error-response {
+  @apply bg-red-500/20 text-red-400;
+  background-color: rgba(239, 68, 68, 0.05); /* Very subtle background */
+}
+
+.info-response {
+  @apply bg-blue-500/20 text-blue-400;
+  background-color: rgba(59, 130, 246, 0.05); /* Very subtle background */
+}
+
+.capitalize-first::first-letter {
+  text-transform: uppercase;
+}
+
+.text-secondaryLight {
+  @apply text-gray-400;
+  color: rgba(255, 255, 255, 0.7); /* Pale white */
+}
+
+.text-secondary {
+  @apply text-gray-300;
+  color: #cbd5e1;
+}
+
+.text-secondaryDark {
+  @apply text-gray-200;
+  color: #e2e8f0;
+}
+
+.text-xxs {
+  font-size: 0.65rem;
+}
+
+.text-tiny {
+  font-size: 0.7rem;
+}
+
+.svg-icons {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Fix for rotated chevron in history groups */
+details[open] .indicator {
+  transform: rotate(90deg);
+}
+
+/* Fix for the buttons to show/hide on hover */
+.opacity-0 {
+  opacity: 0;
+}
+
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1;
+}
+
+.group:hover .group-hover\:text-white {
+  color: #ffffff; /* Bright white on hover */
+}
