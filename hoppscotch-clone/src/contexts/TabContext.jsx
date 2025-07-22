@@ -25,7 +25,15 @@ export const TabProvider = ({ children }) => {
   const [activeTabId, setActiveTabId] = useState(1);
 
   const addTab = useCallback(() => {
-    const newId = Math.max(...tabs.map((t) => t.id)) + 1;
+    // Generate a truly unique ID
+    const existingIds = tabs.map((t) => t.id);
+    let newId = Math.max(...existingIds, 0) + 1;
+
+    // Extra safety check to ensure uniqueness
+    while (existingIds.includes(newId)) {
+      newId = Math.max(...existingIds) + Math.floor(Math.random() * 1000) + 1;
+    }
+
     const newTab = {
       id: newId,
       method: "GET",
@@ -86,11 +94,27 @@ export const TabProvider = ({ children }) => {
           }
         }
 
-        // Find existing tab with same ID
+        // First, try to find an existing tab with the same content
+        const existingContentTab = tabs.find(
+          (tab) =>
+            tab.method === (historyEntry.method || "GET") &&
+            tab.url === (historyEntry.url || "") &&
+            JSON.stringify(tab.headers) === JSON.stringify(parsedHeaders) &&
+            tab.body === (historyEntry.body || "")
+        );
+
+        if (existingContentTab) {
+          // If we found a tab with identical content, just switch to it
+          console.log("Found existing tab with same content, switching to it");
+          setActiveTabId(existingContentTab.id);
+          return;
+        }
+
+        // Check if there's an existing tab with the exact same ID
         const existingTab = tabs.find((tab) => tab.id === historyEntry.tabId);
 
-        if (existingTab) {
-          // Update existing tab
+        if (existingTab && historyEntry.tabId) {
+          // Update existing tab only if we have a valid tabId
           updateTab(historyEntry.tabId, {
             method: historyEntry.method || "GET",
             url: historyEntry.url || "",
@@ -100,9 +124,20 @@ export const TabProvider = ({ children }) => {
           });
           setActiveTabId(historyEntry.tabId);
         } else {
-          // Create new tab
+          // Generate a unique ID that doesn't conflict with existing tabs
+          const generateUniqueId = () => {
+            const existingIds = tabs.map((tab) => tab.id);
+            let newId = Math.max(...existingIds, 0) + 1;
+            while (existingIds.includes(newId)) {
+              newId =
+                Math.max(...existingIds) + Math.floor(Math.random() * 1000) + 1;
+            }
+            return newId;
+          };
+
+          // Create new tab with unique ID
           const newTab = {
-            id: historyEntry.tabId || Date.now(),
+            id: generateUniqueId(),
             method: historyEntry.method || "GET",
             url: historyEntry.url || "",
             headers: parsedHeaders,
@@ -119,8 +154,18 @@ export const TabProvider = ({ children }) => {
         console.error("Error restoring tab:", error);
 
         // Fallback: create a simple tab without headers
+        const generateUniqueId = () => {
+          const existingIds = tabs.map((tab) => tab.id);
+          let newId = Math.max(...existingIds, 0) + 1;
+          while (existingIds.includes(newId)) {
+            newId =
+              Math.max(...existingIds) + Math.floor(Math.random() * 1000) + 1;
+          }
+          return newId;
+        };
+
         const fallbackTab = {
-          id: historyEntry.tabId || Date.now(),
+          id: generateUniqueId(),
           method: historyEntry.method || "GET",
           url: historyEntry.url || "",
           headers: {},
