@@ -12,7 +12,7 @@ const router = express.Router();
 // Routes
 router.get("/", getHistory);
 router.post("/", addHistory);
-router.delete("/clear", clearHistory); // Changed from root delete
+router.delete("/clear", clearHistory);
 router.delete("/:id", deleteHistory);
 router.patch("/:id/star", toggleStar);
 

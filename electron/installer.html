@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Install Hoppscotch Clone</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #333;
+        height: 100vh;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      .installer-container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        margin: 20px;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 25px 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 16px 16px 0 0;
+        color: white;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+      }
+
+      .logo {
+        width: 55px;
+        height: 55px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        margin-right: 15px;
+        backdrop-filter: blur(10px);
+      }
+
+      .header-title {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 3px;
+      }
+
+      .header-version {
+        font-size: 14px;
+        opacity: 0.8;
+      }
+
+      .close-btn {
+        width: 35px;
+        height: 35px;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.3s ease;
+      }
+
+      .close-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
+      }
+
+      .progress-bar {
+        height: 6px;
+        background: rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        width: 0%;
+        transition: width 0.5s ease;
+        position: relative;
+      }
+
+      .progress-fill::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        );
+        animation: shimmer 2s infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      .main-content {
+        flex: 1;
+        padding: 40px 50px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow-y: auto;
+      }
+
+      .page {
+        display: none;
+        flex-direction: column;
+        flex: 1;
+        animation: fadeIn 0.4s ease;
+      }
+
+      .page.active {
+        display: flex;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .page-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .page-subtitle {
+        font-size: 16px;
+        color: #7f8c8d;
+        margin-bottom: 35px;
+        line-height: 1.6;
+      }
+
+      .config-section {
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      .config-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+      }
+
+      .config-title::before {
+        content: "⚙️";
+        margin-right: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #34495e;
+        margin-bottom: 8px;
+      }
+
+      .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+        background: white;
+      }
+
+      .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        background: white;
+        cursor: pointer;
+      }
+
+      .form-checkbox {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .form-checkbox input {
+        margin-right: 10px;
+        transform: scale(1.2);
+      }
+
+      .feature-list {
+        list-style: none;
+        margin-bottom: 30px;
+      }
+
+      .feature-list li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: #34495e;
+        padding: 8px 0;
+      }
+
+      .feature-list li::before {
+        content: "✅";
+        margin-right: 15px;
+        font-size: 16px;
+      }
+
+      .license-text {
+        height: 200px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 20px;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+        font-family: "Monaco", "Menlo", monospace;
+      }
+
+      .path-section {
+        background: rgba(102, 126, 234, 0.05);
+        border: 2px dashed rgba(102, 126, 234, 0.2);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .path-display {
+        font-family: "Monaco", "Menlo", monospace;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin: 15px 0;
+        font-size: 13px;
+        word-break: break-all;
+      }
+
+      .progress-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .install-progress {
+        width: 120px;
+        height: 120px;
+        border: 6px solid #e1e8ed;
+        border-top: 6px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 25px;
+        position: relative;
+      }
+
+      .install-progress::after {
+        content: "⚡";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 32px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.7;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1.1);
+        }
+      }
+
+      .install-text {
+        font-size: 18px;
+        font-weight: 500;
+        color: #2c3e50;
+        margin-bottom: 10px;
+      }
+
+      .install-detail {
+        font-size: 14px;
+        color: #7f8c8d;
+      }
+
+      .success-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+        animation: bounce 1s ease;
+      }
+
+      @keyframes bounce {
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-20px);
+        }
+        60% {
+          transform: translateY(-10px);
+        }
+      }
+
+      .footer {
+        padding: 25px 50px;
+        background: rgba(0, 0, 0, 0.02);
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 0 0 16px 16px;
+      }
+
+      .btn {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: #7f8c8d;
+        border: 2px solid #e1e8ed;
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        border-color: #667eea;
+        color: #667eea;
+      }
+
+      .step-indicator {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-size: 14px;
+        color: #7f8c8d;
+      }
+
+      .step-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #e1e8ed;
+      }
+
+      .step-dot.active {
+        background: #667eea;
+      }
+
+      .error-message {
+        background: #ffebee;
+        border: 1px solid #ffcdd2;
+        color: #c62828;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 13px;
+      }
+
+      .success-message {
+        background: #e8f5e8;
+        border: 1px solid #c8e6c9;
+        color: #2e7d32;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 13px;
+      }
+
+      .port-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .db-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      .test-connection {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #667eea;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .test-connection:hover {
+        color: #764ba2;
+        transform: translateX(5px);
+      }
+
+      small {
+        display: block;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="installer-container">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <div class="logo">H</div>
+          <div>
+            <div class="header-title">Hoppscotch Clone Installer</div>
+            <div class="header-version">Version 1.0.0</div>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeInstaller()">×</button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Step 1: Welcome -->
+        <div class="page active" id="page1">
+          <h1 class="page-title">Welcome to Hoppscotch Clone</h1>
+          <p class="page-subtitle">
+            A powerful API development environment for your desktop. This
+            installer will guide you through the setup process.
+          </p>
+
+          <ul class="feature-list">
+            <li>Full-featured API testing and development</li>
+            <li>Built-in backend server with MySQL support</li>
+            <li>Real-time collaboration features</li>
+            <li>GraphQL and REST API support</li>
+            <li>Automatic updates and sync</li>
+            <li>Cross-platform desktop application</li>
+          </ul>
+
+          <div class="config-section">
+            <div class="config-title">System Requirements</div>
+            <ul style="list-style: none; padding-left: 0">
+              <li style="margin-bottom: 8px">
+                ✓ macOS 10.14 or later / Windows 10 or later
+              </li>
+              <li style="margin-bottom: 8px">
+                ✓ 4GB RAM minimum (8GB recommended)
+              </li>
+              <li style="margin-bottom: 8px">✓ 500MB free disk space</li>
+              <li style="margin-bottom: 8px">
+                ✓ Internet connection for initial setup
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 2: License Agreement -->
+        <div class="page" id="page2">
+          <h1 class="page-title">License Agreement</h1>
+          <p class="page-subtitle">
+            Please read and accept the license agreement to continue.
+          </p>
+
+          <div class="license-text" id="licenseText">
+            MIT License Copyright (c) 2025 Hoppscotch Clone Permission is hereby
+            granted, free of charge, to any person obtaining a copy of this
+            software and associated documentation files (the "Software"), to
+            deal in the Software without restriction, including without
+            limitation the rights to use, copy, modify, merge, publish,
+            distribute, sublicense, and/or sell copies of the Software, and to
+            permit persons to whom the Software is furnished to do so, subject
+            to the following conditions: The above copyright notice and this
+            permission notice shall be included in all copies or substantial
+            portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT
+            WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+            TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+            PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+            COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+            LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+            ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+            OR OTHER DEALINGS IN THE SOFTWARE. THIRD-PARTY LICENSES: - Electron:
+            MIT License - React: MIT License - Express.js: MIT License - MySQL2:
+            MIT License - Vite: MIT License By installing this software, you
+            acknowledge that you have read, understood, and agree to be bound by
+            the terms of this license agreement.
+          </div>
+
+          <div class="form-checkbox">
+            <input type="checkbox" id="acceptLicense" />
+            <label for="acceptLicense"
+              >I accept the terms and conditions of the license agreement</label
+            >
+          </div>
+        </div>
+
+        <!-- Step 3: Installation Path -->
+        <div class="page" id="page3">
+          <h1 class="page-title">Choose Installation Directory</h1>
+          <p class="page-subtitle">
+            Select where you want to install Hoppscotch Clone on your system.
+          </p>
+
+          <div class="path-section">
+            <h3>📁 Installation Location</h3>
+            <div class="path-display" id="installPath">
+              /Applications/Hoppscotch Clone.app
+            </div>
+            <button class="btn btn-secondary" onclick="browseInstallPath()">
+              📂 Browse...
+            </button>
+          </div>
+
+          <div class="config-section">
+            <div class="config-title">Installation Options</div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="createDesktopShortcut" checked />
+              <label for="createDesktopShortcut">Create desktop shortcut</label>
+            </div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="createStartMenu" checked />
+              <label for="createStartMenu"
+                >Add to Start Menu / Applications folder</label
+              >
+            </div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="autoStart" />
+              <label for="autoStart">Start automatically with system</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Port Configuration -->
+        <div class="page" id="page4">
+          <h1 class="page-title">Network Configuration</h1>
+          <p class="page-subtitle">
+            Configure the network ports for the frontend and backend services.
+          </p>
+
+          <div class="config-section">
+            <div class="config-title">Port Settings</div>
+            <div class="port-grid">
+              <div class="form-group">
+                <label class="form-label">Frontend Port</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  id="frontendPort"
+                  value="5173"
+                  min="1000"
+                  max="65535" />
+                <small style="color: #7f8c8d; font-size: 12px"
+                  >Port for the web interface (default: 5173)</small
+                >
+              </div>
+              <div class="form-group">
+                <label class="form-label">Backend API Port</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  id="backendPort"
+                  value="5001"
+                  min="1000"
+                  max="65535" />
+                <small style="color: #7f8c8d; font-size: 12px"
+                  >Port for the API server (default: 5001)</small
+                >
+              </div>
+            </div>
+
+            <div class="form-checkbox">
+              <input type="checkbox" id="autoPortDetection" checked />
+              <label for="autoPortDetection"
+                >Automatically find available ports if specified ports are in
+                use</label
+              >
+            </div>
+
+            <div class="test-connection" onclick="testPorts()">
+              🔍 Test Port Availability
+            </div>
+          </div>
+
+          <div class="config-section">
+            <div class="config-title">Network Security</div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="allowLocalhost" checked />
+              <label for="allowLocalhost"
+                >Allow connections from localhost only (recommended)</label
+              >
+            </div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="allowLAN" />
+              <label for="allowLAN"
+                >Allow connections from local network (for team
+                collaboration)</label
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5: Database Configuration -->
+        <div class="page" id="page5">
+          <h1 class="page-title">Database Configuration</h1>
+          <p class="page-subtitle">
+            Set up your MySQL database connection for storing API history and
+            user data.
+          </p>
+
+          <div class="config-section">
+            <div class="config-title">Database Connection</div>
+
+            <div class="form-group">
+              <label class="form-label">Database Type</label>
+              <select
+                class="form-select"
+                id="dbType"
+                onchange="toggleDBOptions()">
+                <option value="mysql">MySQL</option>
+                <option value="sqlite">SQLite (Local file)</option>
+                <option value="skip">Skip database setup (use later)</option>
+              </select>
+            </div>
+
+            <div id="mysqlOptions">
+              <div class="db-grid">
+                <div class="form-group">
+                  <label class="form-label">Host</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    id="dbHost"
+                    value="localhost"
+                    placeholder="localhost" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Port</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="dbPort"
+                    value="3306"
+                    placeholder="3306" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Database Name</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="dbName"
+                  value="hoppscotch_clone"
+                  placeholder="hoppscotch_clone" />
+              </div>
+
+              <div class="db-grid">
+                <div class="form-group">
+                  <label class="form-label">Username</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    id="dbUsername"
+                    value="root"
+                    placeholder="root" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Password</label>
+                  <input
+                    type="password"
+                    class="form-input"
+                    id="dbPassword"
+                    placeholder="Enter password" />
+                </div>
+              </div>
+
+              <div class="test-connection" onclick="testDatabaseConnection()">
+                🔍 Test Database Connection
+              </div>
+            </div>
+
+            <div id="sqliteOptions" style="display: none">
+              <div class="form-group">
+                <label class="form-label">Database File Location</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="sqlitePath"
+                  value="./data/hoppscotch.db"
+                  readonly />
+                <small style="color: #7f8c8d; font-size: 12px"
+                  >SQLite database will be created automatically</small
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <div class="config-title">Advanced Database Options</div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="createTables" checked />
+              <label for="createTables"
+                >Automatically create database tables</label
+              >
+            </div>
+            <div class="form-checkbox">
+              <input type="checkbox" id="seedData" />
+              <label for="seedData">Install sample data and examples</label>
+            </div>
+          </div>
+
+          <div
+            id="connectionStatus"
+            class="error-message"
+            style="display: none"></div>
+        </div>
+
+        <!-- Step 6: Installation Progress -->
+        <div class="page" id="page6">
+          <div class="progress-section">
+            <div class="install-progress" id="installProgress"></div>
+            <div class="install-text" id="installText">
+              Installing Hoppscotch Clone...
+            </div>
+            <div class="install-detail" id="installDetail">
+              Preparing installation files...
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 7: Installation Complete -->
+        <div class="page" id="page7">
+          <div class="progress-section">
+            <div class="success-icon">🎉</div>
+            <h1 class="page-title">Installation Complete!</h1>
+            <p class="page-subtitle">
+              Hoppscotch Clone has been successfully installed on your system.
+            </p>
+
+            <div class="config-section">
+              <div class="config-title">Installation Summary</div>
+              <div style="font-size: 14px; line-height: 1.6; color: #34495e">
+                <div>
+                  <strong>Installation Path:</strong>
+                  <span id="summaryPath"
+                    >/Applications/Hoppscotch Clone.app</span
+                  >
+                </div>
+                <div>
+                  <strong>Frontend Port:</strong>
+                  <span id="summaryFrontendPort">5173</span>
+                </div>
+                <div>
+                  <strong>Backend Port:</strong>
+                  <span id="summaryBackendPort">5001</span>
+                </div>
+                <div>
+                  <strong>Database:</strong>
+                  <span id="summaryDatabase">MySQL (localhost:3306)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-section">
+              <div class="config-title">Next Steps</div>
+              <ul class="feature-list">
+                <li>Launch Hoppscotch Clone from your Applications folder</li>
+                <li>
+                  The application will automatically start the backend server
+                </li>
+                <li>Visit the Help section for tutorials and documentation</li>
+                <li>Join our community for support and updates</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="step-indicator">
+          <span>Step <span id="currentStep">1</span> of 7</span>
+          <div class="step-dot active" id="dot1"></div>
+          <div class="step-dot" id="dot2"></div>
+          <div class="step-dot" id="dot3"></div>
+          <div class="step-dot" id="dot4"></div>
+          <div class="step-dot" id="dot5"></div>
+          <div class="step-dot" id="dot6"></div>
+          <div class="step-dot" id="dot7"></div>
+        </div>
+
+        <div>
+          <button class="btn btn-secondary" id="prevBtn" style="display: none">
+            ← Back
+          </button>
+          <button class="btn btn-primary" id="nextBtn">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="installer.js"></script>
+  </body>
+</html>

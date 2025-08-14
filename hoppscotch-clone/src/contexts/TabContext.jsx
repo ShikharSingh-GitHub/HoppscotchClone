@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useState } from "react";
 
 const TabContext = createContext();
 
-export const useTabContext = () => {
+// Custom hook with proper naming for Fast Refresh
+const useTabContext = () => {
   const context = useContext(TabContext);
   if (!context) {
     throw new Error("useTabContext must be used within a TabProvider");
@@ -10,7 +11,8 @@ export const useTabContext = () => {
   return context;
 };
 
-export const TabProvider = ({ children }) => {
+// Component with proper naming for Fast Refresh
+const TabProvider = ({ children }) => {
   const [tabs, setTabs] = useState([
     {
       id: 1,
@@ -195,3 +197,6 @@ export const TabProvider = ({ children }) => {
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;
 };
+
+// Export at the bottom for better Fast Refresh compatibility
+export { TabProvider, useTabContext };

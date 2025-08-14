@@ -2,6 +2,8 @@
   "name": "hoppscotch-fullstack",
   "version": "1.0.0",
   "description": "Hoppscotch Clone - Full Stack Application",
+  "author": "Hoppscotch Clone Team",
+  "main": "electron/main.js",
   "private": true,
   "workspaces": [
     "hoppscotch-clone",
@@ -13,9 +15,80 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "install:all": "npm install && cd hoppscotch-clone && npm install && cd ../hoppscotch-backend && npm install",
     "build:frontend": "cd hoppscotch-clone && npm run build",
-    "start:backend": "cd hoppscotch-backend && npm start"
+    "start:backend": "cd hoppscotch-backend && npm start",
+    "electron:dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:all": "npm run build:frontend && npm run build:backend",
+    "build:backend": "cd hoppscotch-backend && npm install --production",
+    "electron:build": "npm run build:all && npx electron-builder",
+    "electron:pack": "npm run build:all && npx electron-builder --publish=never",
+    "dist": "npm run build:all && npx electron-builder --publish=always"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "electron": "32.3.3",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.hoppscotch.clone",
+    "productName": "Hoppscotch Clone",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "hoppscotch-clone/**/*",
+      "hoppscotch-backend/**/*",
+      "!hoppscotch-backend/node_modules",
+      "!hoppscotch-clone/node_modules",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "hoppscotch-backend/**/*"
+    ],
+    "extraResources": [
+      "hoppscotch-backend/**/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   }
 }

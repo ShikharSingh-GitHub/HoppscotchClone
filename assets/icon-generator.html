@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hoppscotch Icon Generator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      canvas {
+        border: 1px solid #ccc;
+        margin: 10px;
+      }
+      .icons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .icon-item {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hoppscotch Desktop App Icons</h1>
+    <p>Generated placeholder icons for the Electron app</p>
+
+    <div class="icons">
+      <div class="icon-item">
+        <canvas id="icon16" width="16" height="16"></canvas>
+        <p>16x16</p>
+      </div>
+      <div class="icon-item">
+        <canvas id="icon32" width="32" height="32"></canvas>
+        <p>32x32</p>
+      </div>
+      <div class="icon-item">
+        <canvas id="icon64" width="64" height="64"></canvas>
+        <p>64x64</p>
+      </div>
+      <div class="icon-item">
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <p>128x128</p>
+      </div>
+      <div class="icon-item">
+        <canvas id="icon256" width="256" height="256"></canvas>
+        <p>256x256</p>
+      </div>
+      <div class="icon-item">
+        <canvas id="icon512" width="512" height="512"></canvas>
+        <p>512x512</p>
+      </div>
+    </div>
+
+    <script>
+      function drawIcon(canvasId, size) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext("2d");
+
+        // Background gradient
+        const gradient = ctx.createLinearGradient(0, 0, size, size);
+        gradient.addColorStop(0, "#667EEA");
+        gradient.addColorStop(1, "#764BA2");
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+
+        // Add rounded corners effect
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.beginPath();
+        const radius = size * 0.15;
+        ctx.roundRect(0, 0, size, size, radius);
+        ctx.fill();
+
+        ctx.globalCompositeOperation = "source-over";
+
+        // Draw "H" letter
+        ctx.fillStyle = "white";
+        ctx.font = `bold ${size * 0.6}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("H", size / 2, size / 2);
+      }
+
+      // Generate all icon sizes
+      [16, 32, 64, 128, 256, 512].forEach((size) => {
+        drawIcon(`icon${size}`, size);
+      });
+    </script>
+  </body>
+</html>

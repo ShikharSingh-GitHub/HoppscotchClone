@@ -82,3 +82,9 @@ public/
 
 # DynamoDB Local files
 .dynamodb/
+
+# Electron build artifacts
+dist-electron/
+*.dmg
+*.blockmap
+*.yml

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Installer Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .btn {
+        padding: 10px 20px;
+        margin: 5px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      .page {
+        display: none;
+        padding: 20px;
+        border: 1px solid #ccc;
+        margin: 10px 0;
+      }
+      .page.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Installer Debug Test</h1>
+
+    <div>Current Step: <span id="currentStepDisplay">1</span></div>
+
+    <div class="page active" id="page1">
+      <h2>Step 1: Welcome</h2>
+      <p>This is step 1 content</p>
+    </div>
+
+    <div class="page" id="page2">
+      <h2>Step 2: License</h2>
+      <p>This is step 2 content</p>
+      <input type="checkbox" id="acceptLicense" /> Accept License
+    </div>
+
+    <div class="page" id="page3">
+      <h2>Step 3: Install Path</h2>
+      <p>This is step 3 content</p>
+      <input type="text" id="installPath" value="/Applications/Test" />
+    </div>
+
+    <div>
+      <button class="btn" id="prevBtn" style="display: none">← Back</button>
+      <button class="btn" id="nextBtn">Next →</button>
+    </div>
+
+    <script>
+      let currentStep = 1;
+      const totalSteps = 3;
+
+      console.log("Script loaded");
+
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log("DOM loaded");
+        initializeInstaller();
+        updateUI();
+      });
+
+      function initializeInstaller() {
+        console.log("Initializing installer...");
+
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+
+        console.log("prevBtn:", prevBtn);
+        console.log("nextBtn:", nextBtn);
+
+        if (nextBtn) {
+          nextBtn.onclick = function () {
+            console.log("Next button clicked!");
+            nextStep();
+          };
+        }
+
+        if (prevBtn) {
+          prevBtn.onclick = function () {
+            console.log("Prev button clicked!");
+            previousStep();
+          };
+        }
+      }
+
+      function updateUI() {
+        console.log("Updating UI to step:", currentStep);
+
+        // Hide all pages
+        for (let i = 1; i <= totalSteps; i++) {
+          const page = document.getElementById(`page${i}`);
+          if (page) {
+            page.classList.remove("active");
+          }
+        }
+
+        // Show current page
+        const currentPage = document.getElementById(`page${currentStep}`);
+        if (currentPage) {
+          currentPage.classList.add("active");
+        }
+
+        // Update step display
+        const stepDisplay = document.getElementById("currentStepDisplay");
+        if (stepDisplay) {
+          stepDisplay.textContent = currentStep;
+        }
+
+        // Update buttons
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+
+        if (prevBtn) {
+          prevBtn.style.display = currentStep === 1 ? "none" : "inline-block";
+        }
+
+        if (nextBtn) {
+          nextBtn.disabled = false;
+          if (currentStep === totalSteps) {
+            nextBtn.textContent = "Finish";
+          } else {
+            nextBtn.textContent = "Next →";
+          }
+        }
+
+        validateStep();
+      }
+
+      function validateStep() {
+        const nextBtn = document.getElementById("nextBtn");
+        if (!nextBtn) return;
+
+        let isValid = false;
+
+        switch (currentStep) {
+          case 1:
+            isValid = true;
+            break;
+          case 2:
+            const acceptLicense = document.getElementById("acceptLicense");
+            isValid = acceptLicense && acceptLicense.checked;
+            break;
+          case 3:
+            const installPath = document.getElementById("installPath");
+            isValid = installPath && installPath.value.trim() !== "";
+            break;
+          default:
+            isValid = true;
+        }
+
+        nextBtn.disabled = !isValid;
+        console.log("Step", currentStep, "validation:", isValid);
+      }
+
+      function nextStep() {
+        console.log(
+          "nextStep called, current:",
+          currentStep,
+          "total:",
+          totalSteps
+        );
+        if (currentStep < totalSteps) {
+          currentStep++;
+          console.log("Moving to step:", currentStep);
+          updateUI();
+        } else {
+          console.log("Finish clicked");
+          alert("Installation complete!");
+        }
+      }
+
+      function previousStep() {
+        console.log("previousStep called, current:", currentStep);
+        if (currentStep > 1) {
+          currentStep--;
+          console.log("Moving to step:", currentStep);
+          updateUI();
+        }
+      }
+
+      // Add event listeners for validation
+      document.addEventListener("change", validateStep);
+      document.addEventListener("input", validateStep);
+    </script>
+  </body>
+</html>
