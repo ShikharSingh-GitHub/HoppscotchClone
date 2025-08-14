@@ -25,7 +25,13 @@ const Sidebar = () => {
   const sidebarExpanded = useUIStore((state) => state.sidebarExpanded);
 
   const getActiveStyle = (path) => {
-    return currentPath === path
+    // Special handling for REST: both "/" and "/rest" should be active
+    const isActive =
+      path === "/rest"
+        ? currentPath === "/" || currentPath === "/rest"
+        : currentPath === path;
+
+    return isActive
       ? "border-l-[3px] border-btn bg-search-bg-hover text-white"
       : "hover:bg-search-bg";
   };
@@ -68,13 +74,25 @@ const Sidebar = () => {
               className={`nav-link flex flex-col items-center justify-center px-4 py-3 text-center transition-colors min-w-[80px] ${getActiveStyle(
                 item.path
               )} ${
-                currentPath === item.path
+                (
+                  item.path === "/rest"
+                    ? currentPath === "/" || currentPath === "/rest"
+                    : currentPath === item.path
+                )
                   ? "router-link-active router-link-exact-active"
                   : ""
               }`}
               tabIndex="0"
               exact={item.path === "/rest" ? "true" : "false"}
-              aria-current={currentPath === item.path ? "page" : undefined}>
+              aria-current={
+                (
+                  item.path === "/rest"
+                    ? currentPath === "/" || currentPath === "/rest"
+                    : currentPath === item.path
+                )
+                  ? "page"
+                  : undefined
+              }>
               <div className="flex items-center justify-center mb-1">
                 {item.icon}
               </div>

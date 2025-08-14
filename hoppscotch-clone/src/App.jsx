@@ -27,8 +27,8 @@ function App() {
           {/* Main content panel */}
           <div className="flex-1 overflow-hidden">
             <Routes>
-              <Route path="/" element={<Navigate to="/rest" replace />} />
-              <Route path="/rest" element={<RestPanel />} />
+              <Route path="/" element={<RestPanel />} />
+              <Route path="/rest" element={<Navigate to="/" />} />
               <Route path="/graphql" element={<GraphQLPanel />} />
               <Route path="/realtime" element={<RealTimePanel />} />
               <Route path="/settings" element={<SettingsPanel />} />
