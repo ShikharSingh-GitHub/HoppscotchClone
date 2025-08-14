@@ -14,6 +14,15 @@ const PORT = process.env.PORT || (isElectron ? 5001 : 5000);
 console.log(`🔧 Running in ${isElectron ? "Electron" : "standalone"} mode`);
 console.log(`📡 Server will start on port ${PORT}`);
 
+// Log database configuration for debugging
+console.log("🗄️ Database configuration:", {
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  database: process.env.DB_NAME || "hoppscotch_db",
+  port: process.env.DB_PORT || 3306,
+  passwordProvided: !!process.env.DB_PASSWORD,
+});
+
 // Test DB connection
 pool
   .getConnection()
@@ -23,6 +32,13 @@ pool
   })
   .catch((err) => {
     console.error("❌ Database connection failed:", err.message);
+    console.error("❌ Error details:", {
+      code: err.code,
+      errno: err.errno,
+      sqlState: err.sqlState,
+      sqlMessage: err.sqlMessage,
+    });
+
     // In Electron mode, continue without DB for now
     if (!isElectron) {
       process.exit(1);

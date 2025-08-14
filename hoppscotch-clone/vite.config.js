@@ -6,8 +6,8 @@ export default defineConfig({
   base: "./", // Use relative paths for assets - needed for Electron file:// loading
   server: {
     host: "0.0.0.0", // Allow external access
-    port: 5173, // Default port
-    strictPort: true, // Don't try other ports if 5173 is occupied
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5173, // Use PORT env variable or default to 5173
+    strictPort: false, // Allow fallback to other ports if configured port is occupied
     cors: true, // Enable CORS
   },
 });

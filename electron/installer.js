@@ -1,7 +1,7 @@
 const { ipcRenderer } = require("electron");
 
 let currentStep = 1;
-const totalSteps = 7;
+const totalSteps = 8;
 let installationConfig = {
   installPath: "",
   frontendPort: 5173,
@@ -40,6 +40,7 @@ function initializeInstaller() {
   const dbHost = document.getElementById("dbHost");
   const dbName = document.getElementById("dbName");
   const dbUsername = document.getElementById("dbUsername");
+  const confirmInstall = document.getElementById("confirmInstall");
 
   if (acceptLicense) acceptLicense.addEventListener("change", validateStep);
   if (frontendPort) frontendPort.addEventListener("input", validateStep);
@@ -47,6 +48,7 @@ function initializeInstaller() {
   if (dbHost) dbHost.addEventListener("input", validateStep);
   if (dbName) dbName.addEventListener("input", validateStep);
   if (dbUsername) dbUsername.addEventListener("input", validateStep);
+  if (confirmInstall) confirmInstall.addEventListener("change", validateStep);
 
   // Set up navigation buttons - will be managed by updateNavigationButtons()
   const prevBtn = document.getElementById("prevBtn");
@@ -121,7 +123,7 @@ function updateUI() {
   validateStep();
 
   // Update installation summary if on review step
-  if (currentStep === 5) {
+  if (currentStep === 6) {
     updateInstallationSummary();
   }
 }
@@ -138,7 +140,7 @@ function updateNavigationButtons() {
 
   if (nextBtn) {
     // Update button text and function based on current step
-    if (currentStep === 5) {
+    if (currentStep === 6) {
       nextBtn.textContent = "Start Installation";
       nextBtn.onclick = startInstallation;
     } else if (currentStep === totalSteps) {
@@ -175,24 +177,43 @@ function validateStep() {
     case 4:
       const frontendPort = document.getElementById("frontendPort");
       const backendPort = document.getElementById("backendPort");
+      const portTestStatus = document.getElementById("portTestStatus");
+
       isValid =
         frontendPort &&
         backendPort &&
-        frontendPort.value > 0 &&
+        frontendPort.value > 1023 &&
         frontendPort.value <= 65535 &&
-        backendPort.value > 0 &&
+        backendPort.value > 1023 &&
         backendPort.value <= 65535 &&
         frontendPort.value !== backendPort.value;
+
+      // If ports are valid but not tested, encourage testing
+      if (
+        isValid &&
+        (!portTestStatus || !portTestStatus.classList.contains("test-success"))
+      ) {
+        const testBtn = document.querySelector(
+          '.test-connection[onclick*="testPorts"]'
+        );
+        if (testBtn) {
+          testBtn.style.animation = "pulse 2s infinite";
+        }
+      }
       break;
 
     case 5:
-      const dbType = document.querySelector('input[name="dbType"]:checked');
-      if (dbType && dbType.value === "sqlite") {
+      const dbTypeSelect = document.getElementById("dbType");
+      if (dbTypeSelect && dbTypeSelect.value === "sqlite") {
+        isValid = true;
+      } else if (dbTypeSelect && dbTypeSelect.value === "skip") {
         isValid = true;
       } else {
         const dbHost = document.getElementById("dbHost");
         const dbName = document.getElementById("dbName");
         const dbUsername = document.getElementById("dbUsername");
+        const dbTestStatus = document.getElementById("dbTestStatus");
+
         isValid =
           dbHost &&
           dbName &&
@@ -200,7 +221,26 @@ function validateStep() {
           dbHost.value.trim() !== "" &&
           dbName.value.trim() !== "" &&
           dbUsername.value.trim() !== "";
+
+        // If database config is valid but not tested, encourage testing
+        if (
+          isValid &&
+          (!dbTestStatus || !dbTestStatus.classList.contains("test-success"))
+        ) {
+          const testBtn = document.querySelector(
+            '.test-connection[onclick*="testDatabaseConnection"]'
+          );
+          if (testBtn) {
+            testBtn.style.animation = "pulse 2s infinite";
+          }
+        }
       }
+      break;
+
+    case 6:
+      // Review step - check confirmation checkbox
+      const confirmInstall = document.getElementById("confirmInstall");
+      isValid = confirmInstall && confirmInstall.checked;
       break;
 
     default:
@@ -223,7 +263,7 @@ function nextStep() {
 
 function previousStep() {
   console.log("Previous step clicked, current step:", currentStep);
-  if (currentStep > 1 && currentStep !== 6) {
+  if (currentStep > 1 && currentStep !== 7) {
     // Don't allow going back from installation progress
     currentStep--;
     console.log("Moving to step:", currentStep);
@@ -265,8 +305,8 @@ function saveCurrentStepData() {
       break;
 
     case 5:
-      const dbType = document.querySelector('input[name="dbType"]:checked');
-      installationConfig.dbType = dbType ? dbType.value : "mysql";
+      const dbTypeSelect = document.getElementById("dbType");
+      installationConfig.dbType = dbTypeSelect ? dbTypeSelect.value : "mysql";
 
       if (installationConfig.dbType === "mysql") {
         installationConfig.dbHost = document.getElementById("dbHost").value;
@@ -293,8 +333,16 @@ function browseInstallPath() {
 }
 
 function testPorts() {
-  const frontendPort = document.getElementById("frontendPort").value;
-  const backendPort = document.getElementById("backendPort").value;
+  const frontendPort = parseInt(document.getElementById("frontendPort").value);
+  const backendPort = parseInt(document.getElementById("backendPort").value);
+  const testBtn = document.querySelector(
+    '.test-connection[onclick*="testPorts"]'
+  );
+
+  // Clear any existing animation
+  if (testBtn) {
+    testBtn.style.animation = "";
+  }
 
   if (!frontendPort || !backendPort) {
     showMessage("error", "Please enter both port numbers");
@@ -306,7 +354,51 @@ function testPorts() {
     return;
   }
 
-  showMessage("success", "Ports are available and valid");
+  if (
+    frontendPort < 1024 ||
+    frontendPort > 65535 ||
+    backendPort < 1024 ||
+    backendPort > 65535
+  ) {
+    showMessage("error", "Port numbers must be between 1024 and 65535");
+    return;
+  }
+
+  showMessage("info", "Testing port availability...");
+
+  // Send request to main process to test ports
+  ipcRenderer.send("test-ports", { frontendPort, backendPort });
+
+  // Listen for response
+  ipcRenderer.once("test-ports-response", (event, result) => {
+    if (result.success) {
+      if (result.frontendAvailable && result.backendAvailable) {
+        showMessage(
+          "success",
+          `✅ Both ports are available!\n• Frontend: ${frontendPort}\n• Backend: ${backendPort}`
+        );
+
+        // Update the installation config immediately
+        installationConfig.frontendPort = frontendPort;
+        installationConfig.backendPort = backendPort;
+
+        // Enable the next button
+        validateStep();
+      } else {
+        let errorMsg = "❌ Port(s) not available:\n";
+        if (!result.frontendAvailable) {
+          errorMsg += `• Frontend port ${frontendPort} is in use\n`;
+        }
+        if (!result.backendAvailable) {
+          errorMsg += `• Backend port ${backendPort} is in use\n`;
+        }
+        errorMsg += "\nPlease try different port numbers.";
+        showMessage("error", errorMsg);
+      }
+    } else {
+      showMessage("error", `Port testing failed: ${result.error}`);
+    }
+  });
 }
 
 function toggleDBOptions() {
@@ -322,33 +414,95 @@ function toggleDBOptions() {
 }
 
 function testDatabaseConnection() {
-  const dbType = document.querySelector('input[name="dbType"]:checked');
+  const dbTypeSelect = document.getElementById("dbType");
+  const testBtn = document.querySelector(
+    '.test-connection[onclick*="testDatabaseConnection"]'
+  );
 
-  if (!dbType) {
+  // Clear any existing animation
+  if (testBtn) {
+    testBtn.style.animation = "";
+  }
+
+  if (!dbTypeSelect || !dbTypeSelect.value) {
     showMessage("error", "Please select a database type");
     return;
   }
 
-  if (dbType.value === "sqlite") {
-    showMessage("success", "SQLite database will be created automatically");
+  const dbType = dbTypeSelect.value;
+
+  if (dbType === "sqlite") {
+    showMessage("success", "✅ SQLite database will be created automatically");
     return;
   }
 
-  const host = document.getElementById("dbHost").value;
-  const port = document.getElementById("dbPort").value;
-  const database = document.getElementById("dbName").value;
-  const username = document.getElementById("dbUsername").value;
+  if (dbType === "skip") {
+    showMessage("info", "ℹ️ Database setup will be skipped");
+    return;
+  }
+
+  const host = document.getElementById("dbHost").value.trim();
+  const port = parseInt(document.getElementById("dbPort").value);
+  const database = document.getElementById("dbName").value.trim();
+  const username = document.getElementById("dbUsername").value.trim();
+  const password = document.getElementById("dbPassword").value;
 
   if (!host || !database || !username) {
-    showMessage("error", "Please fill in all required database fields");
+    showMessage(
+      "error",
+      "Please fill in all required database fields (Host, Database Name, Username)"
+    );
     return;
   }
 
-  // Simulate connection test
-  showMessage("info", "Testing database connection...");
-  setTimeout(() => {
-    showMessage("success", "Database connection successful!");
-  }, 2000);
+  if (!port || port < 1 || port > 65535) {
+    showMessage("error", "Please enter a valid port number (1-65535)");
+    return;
+  }
+
+  showMessage("info", "🔄 Testing database connection...");
+
+  // Send database test request to main process
+  const dbConfig = {
+    type: dbType,
+    host: host,
+    port: port,
+    database: database,
+    username: username,
+    password: password,
+  };
+
+  ipcRenderer.send("test-database", dbConfig);
+
+  // Listen for response
+  ipcRenderer.once("test-database-response", (event, result) => {
+    if (result.success) {
+      showMessage(
+        "success",
+        `✅ Database connection successful!\n• Host: ${host}:${port}\n• Database: ${database}\n• Connected as: ${username}`
+      );
+
+      // Update the installation config immediately
+      installationConfig.dbType = dbType;
+      installationConfig.dbHost = host;
+      installationConfig.dbPort = port;
+      installationConfig.dbName = database;
+      installationConfig.dbUsername = username;
+      installationConfig.dbPassword = password;
+
+      // Enable the next button
+      validateStep();
+    } else {
+      let errorMsg = `❌ Database connection failed:\n${result.error}\n\n`;
+      errorMsg += "Please check:\n";
+      errorMsg += "• MySQL server is running\n";
+      errorMsg += "• Host and port are correct\n";
+      errorMsg += "• Username and password are valid\n";
+      errorMsg += "• Database exists or user has CREATE privileges";
+
+      showMessage("error", errorMsg);
+    }
+  });
 }
 
 function startInstallation() {
@@ -356,7 +510,7 @@ function startInstallation() {
   saveCurrentStepData();
 
   // Move to installation progress step
-  currentStep = 6;
+  currentStep = 7;
   updateUI();
 
   // Hide navigation buttons during installation
@@ -390,16 +544,13 @@ function performInstallation() {
     if (stepIndex >= installSteps.length) {
       // Installation complete
       setTimeout(() => {
-        currentStep = 7;
+        currentStep = 8;
         updateUI();
 
-        // Show finish button
-        const nextBtn = document.getElementById("nextBtn");
-        if (nextBtn) {
-          nextBtn.style.display = "inline-block";
-          nextBtn.textContent = "Finish";
-          nextBtn.onclick = finishInstallation;
-        }
+        // Auto-finish after 2 seconds instead of waiting for user
+        setTimeout(() => {
+          finishInstallation();
+        }, 2000);
       }, 1000);
       return;
     }
@@ -435,6 +586,18 @@ function performInstallation() {
 function updateInstallationSummary() {
   const summaryElement = document.getElementById("installationSummary");
   if (!summaryElement) return;
+
+  // Ensure we have the latest configuration by reading directly from form inputs
+  const frontendPortInput = document.getElementById("frontendPort");
+  const backendPortInput = document.getElementById("backendPort");
+
+  // Update ports from form inputs if they exist and have values
+  if (frontendPortInput && frontendPortInput.value) {
+    installationConfig.frontendPort = parseInt(frontendPortInput.value);
+  }
+  if (backendPortInput && backendPortInput.value) {
+    installationConfig.backendPort = parseInt(backendPortInput.value);
+  }
 
   const summary = `
     <strong>Installation Path:</strong> ${installationConfig.installPath}<br>
@@ -526,7 +689,7 @@ function closeInstaller() {
 
 // Prevent closing during installation
 window.addEventListener("beforeunload", (e) => {
-  if (currentStep === 6) {
+  if (currentStep === 7) {
     // Installation in progress
     e.preventDefault();
     e.returnValue =

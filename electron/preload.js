@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // App info
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
 
+  // Configuration
+  getBackendPort: () => ipcRenderer.invoke("get-backend-port"),
+
   // Installer methods
   installerComplete: () => ipcRenderer.invoke("installer-complete"),
   installerCancel: () => ipcRenderer.invoke("installer-cancel"),

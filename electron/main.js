@@ -148,6 +148,279 @@ ipcMain.on("close-installer", () => {
   }
 });
 
+// Port availability testing
+ipcMain.on("test-ports", async (event, { frontendPort, backendPort }) => {
+  console.log("Testing port availability:", { frontendPort, backendPort });
+
+  try {
+    const net = require("net");
+
+    const testPort = (port) => {
+      return new Promise((resolve) => {
+        const server = net.createServer();
+
+        server.listen(port, () => {
+          server.once("close", () => {
+            resolve(true); // Port is available
+          });
+          server.close();
+        });
+
+        server.on("error", (err) => {
+          resolve(false); // Port is in use
+        });
+      });
+    };
+
+    const frontendAvailable = await testPort(frontendPort);
+    const backendAvailable = await testPort(backendPort);
+
+    event.reply("test-ports-response", {
+      success: true,
+      frontendAvailable,
+      backendAvailable,
+      frontendPort,
+      backendPort,
+    });
+  } catch (error) {
+    console.error("Port testing error:", error);
+    event.reply("test-ports-response", {
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Database connection testing
+ipcMain.on("test-database", async (event, dbConfig) => {
+  console.log("Testing database connection:", {
+    ...dbConfig,
+    password: dbConfig.password ? "***" : "(empty)",
+  });
+
+  try {
+    if (dbConfig.type === "mysql") {
+      // Test MySQL connection using a simpler approach with better error handling
+      const { spawn } = require("child_process");
+
+      console.log("Testing MySQL connection with:", {
+        host: dbConfig.host,
+        port: dbConfig.port,
+        user: dbConfig.username,
+        database: dbConfig.database,
+        passwordProvided: !!dbConfig.password,
+      });
+
+      // Use full path to mysql to avoid PATH issues
+      const mysqlPath = "/usr/local/bin/mysql";
+
+      // Build MySQL command - test basic connection first
+      const args = [
+        "-h",
+        dbConfig.host,
+        "-P",
+        dbConfig.port.toString(),
+        "-u",
+        dbConfig.username,
+      ];
+
+      // Add password if provided (note: -p with no space for password)
+      if (dbConfig.password && dbConfig.password.trim() !== "") {
+        args.push(`-p${dbConfig.password}`);
+      }
+
+      // Add the test query
+      args.push("-e", "SELECT 1 as connection_test;");
+
+      console.log("Executing MySQL command:", mysqlPath, args.join(" "));
+
+      const testProcess = spawn(mysqlPath, args, {
+        stdio: ["pipe", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          PATH: process.env.PATH + ":/usr/local/bin:/opt/homebrew/bin",
+        },
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let processCompleted = false;
+
+      const timeout = setTimeout(() => {
+        if (!processCompleted) {
+          testProcess.kill();
+          event.reply("test-database-response", {
+            success: false,
+            error: "Database connection test timed out after 10 seconds",
+          });
+        }
+      }, 10000);
+
+      testProcess.stdout.on("data", (data) => {
+        stdout += data.toString();
+        console.log("MySQL stdout:", data.toString());
+      });
+
+      testProcess.stderr.on("data", (data) => {
+        stderr += data.toString();
+        console.log("MySQL stderr:", data.toString());
+      });
+
+      testProcess.on("close", (code) => {
+        clearTimeout(timeout);
+        processCompleted = true;
+
+        console.log("MySQL process closed with code:", code);
+        console.log("MySQL stdout:", stdout);
+        console.log("MySQL stderr:", stderr);
+
+        if (code === 0 && stdout.includes("connection_test")) {
+          console.log(
+            "Basic MySQL connection successful, now testing database"
+          );
+
+          // Connection successful, now test database creation/access
+          const dbArgs = [
+            "-h",
+            dbConfig.host,
+            "-P",
+            dbConfig.port.toString(),
+            "-u",
+            dbConfig.username,
+          ];
+
+          if (dbConfig.password && dbConfig.password.trim() !== "") {
+            dbArgs.push(`-p${dbConfig.password}`);
+          }
+
+          dbArgs.push(
+            "-e",
+            `CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\`; USE \`${dbConfig.database}\`; SELECT 'database_ok' as db_test;`
+          );
+
+          const dbTestProcess = spawn(mysqlPath, dbArgs, {
+            stdio: ["pipe", "pipe", "pipe"],
+            env: {
+              ...process.env,
+              PATH: process.env.PATH + ":/usr/local/bin:/opt/homebrew/bin",
+            },
+          });
+
+          let dbStdout = "";
+          let dbStderr = "";
+
+          dbTestProcess.stdout.on("data", (data) => {
+            dbStdout += data.toString();
+          });
+
+          dbTestProcess.stderr.on("data", (data) => {
+            dbStderr += data.toString();
+          });
+
+          dbTestProcess.on("close", (dbCode) => {
+            if (dbCode === 0 && dbStdout.includes("database_ok")) {
+              event.reply("test-database-response", {
+                success: true,
+                message: "Database connection and access successful",
+              });
+            } else {
+              console.error("Database test failed:", dbStderr);
+              event.reply("test-database-response", {
+                success: false,
+                error: `Database test failed: ${
+                  dbStderr.trim() || "Cannot create or access database"
+                }`,
+              });
+            }
+          });
+        } else {
+          // Connection failed, provide detailed error
+          let errorMessage = "Connection failed";
+
+          if (stderr.includes("Access denied")) {
+            errorMessage = `Access denied for user '${dbConfig.username}' - check username and password`;
+          } else if (stderr.includes("Can't connect to MySQL server")) {
+            errorMessage = `Cannot connect to MySQL server at '${dbConfig.host}:${dbConfig.port}' - check if server is running`;
+          } else if (stderr.includes("Unknown host")) {
+            errorMessage = `Unknown host '${dbConfig.host}' - check hostname`;
+          } else if (stderr.includes("mysql: command not found")) {
+            errorMessage =
+              "MySQL client not found - MySQL may not be installed";
+          } else if (stderr.trim()) {
+            errorMessage = `MySQL error: ${stderr.trim()}`;
+          } else if (code !== 0) {
+            errorMessage = `Connection failed with exit code ${code}`;
+          }
+
+          console.error("MySQL connection failed:", errorMessage);
+          event.reply("test-database-response", {
+            success: false,
+            error: errorMessage,
+          });
+        }
+      });
+
+      testProcess.on("error", (error) => {
+        clearTimeout(timeout);
+        processCompleted = true;
+        console.error("MySQL test process error:", error);
+
+        let errorMessage = "Failed to start MySQL test";
+        if (error.code === "ENOENT") {
+          errorMessage =
+            "MySQL client not found at /usr/local/bin/mysql. Please install MySQL or try SQLite instead.";
+        } else {
+          errorMessage = `Database test error: ${error.message}`;
+        }
+
+        event.reply("test-database-response", {
+          success: false,
+          error: errorMessage,
+        });
+      });
+    } else if (dbConfig.type === "sqlite") {
+      // SQLite connection test
+      const fs = require("fs");
+      const path = require("path");
+
+      try {
+        // For SQLite, just verify the directory exists and is writable
+        const dbDir = path.dirname(dbConfig.filename);
+
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+
+        // Try to create/access the database file
+        const testFile = path.join(dbDir, "test_write.tmp");
+        fs.writeFileSync(testFile, "test");
+        fs.unlinkSync(testFile);
+
+        event.reply("test-database-response", {
+          success: true,
+          message: "SQLite location accessible",
+        });
+      } catch (error) {
+        event.reply("test-database-response", {
+          success: false,
+          error: `SQLite access failed: ${error.message}`,
+        });
+      }
+    } else {
+      event.reply("test-database-response", {
+        success: false,
+        error: "Unsupported database type",
+      });
+    }
+  } catch (error) {
+    console.error("Database test error:", error);
+    event.reply("test-database-response", {
+      success: false,
+      error: `Test failed: ${error.message}`,
+    });
+  }
+});
+
 // Main application startup
 async function startApplication() {
   try {
@@ -158,26 +431,49 @@ async function startApplication() {
 
     console.log("Starting backend server...");
     // Start backend server first
-    await startBackendServer().catch((error) => {
-      console.error("Backend startup failed:", error);
-      // Continue without backend for now
-    });
+    let backendStarted = false;
+    try {
+      await startBackendServer();
+      backendStarted = true;
+      console.log("✅ Backend server started successfully");
+    } catch (error) {
+      console.error("❌ Backend startup failed:", error);
+      // Continue without backend - don't quit the app
+      backendStarted = false;
+    }
 
     console.log("Starting frontend development server...");
     // Start frontend dev server for browser access
-    await startFrontendDevServer().catch((error) => {
-      console.error("Frontend dev server startup failed:", error);
+    let frontendStarted = false;
+    try {
+      await startFrontendDevServer();
+      frontendStarted = true;
+      console.log("✅ Frontend server started successfully");
+    } catch (error) {
+      console.error("❌ Frontend dev server startup failed:", error);
       // Continue without frontend dev server
-    });
+      frontendStarted = false;
+    }
 
     // Wait for servers to be ready
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Create main window (will load the built frontend)
-    await createMainWindow();
+    // Create main window (will load the built frontend) - this should always work
+    try {
+      await createMainWindow();
+      console.log("✅ Main window created successfully");
+    } catch (error) {
+      console.error("❌ Failed to create main window:", error);
+      // Try to show an error window instead of quitting
+      createErrorWindow("Failed to create main window: " + error.message);
+    }
 
     // Create application menu
-    createApplicationMenu();
+    try {
+      createApplicationMenu();
+    } catch (error) {
+      console.error("❌ Failed to create application menu:", error);
+    }
 
     // Close splash screen
     if (splashWindow) {
@@ -185,15 +481,39 @@ async function startApplication() {
       splashWindow = null;
     }
 
-    console.log("Application started successfully");
-    console.log("🔧 Backend available at: http://localhost:5001");
+    console.log("🎉 Application startup completed!");
+    if (backendStarted) {
+      console.log("🔧 Backend available at: http://localhost:5001");
+    } else {
+      console.log("⚠️  Backend not available - check console for errors");
+    }
+    if (frontendStarted) {
+      console.log("🌐 Frontend available at: http://localhost:5173");
+    }
   } catch (error) {
-    console.error("Failed to start application:", error);
-    dialog.showErrorBox(
-      "Startup Error",
-      "Failed to start the application. Please try again."
-    );
-    app.quit();
+    console.error("💥 Critical failure in startApplication:", error);
+
+    // Close splash screen if it exists
+    if (splashWindow) {
+      splashWindow.close();
+      splashWindow = null;
+    }
+
+    // Don't quit immediately - try to show an error dialog
+    try {
+      const { dialog } = require("electron");
+      dialog.showErrorBox(
+        "Startup Error",
+        `Failed to start the application: ${error.message}\n\nThe app will continue to run, but some features may not work.`
+      );
+
+      // Try to create a basic main window
+      createErrorWindow(error.message);
+    } catch (dialogError) {
+      console.error("💥 Failed to show error dialog:", dialogError);
+      // As last resort, quit the app
+      app.quit();
+    }
   }
 }
 
@@ -216,6 +536,63 @@ function createSplashWindow() {
   splashWindow.on("closed", () => {
     splashWindow = null;
   });
+}
+
+function createErrorWindow(errorMessage) {
+  const errorWindow = new BrowserWindow({
+    width: 600,
+    height: 400,
+    frame: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  const errorHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Hoppscotch Clone - Error</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+            .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .error { color: #d32f2f; }
+            .title { color: #1976d2; margin-bottom: 20px; }
+            .message { margin: 20px 0; padding: 15px; background: #ffebee; border-left: 4px solid #f44336; }
+            .suggestion { margin-top: 20px; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196f3; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="title">🚨 Application Startup Error</h1>
+            <div class="message">
+                <strong>Error:</strong> ${errorMessage}
+            </div>
+            <div class="suggestion">
+                <strong>What you can try:</strong>
+                <ul>
+                    <li>Restart the application</li>
+                    <li>Check if MySQL database is running</li>
+                    <li>Try accessing the web version at <a href="http://localhost:5173">http://localhost:5173</a></li>
+                </ul>
+            </div>
+            <p><em>The application window will remain open, but some features may not work properly.</em></p>
+        </div>
+    </body>
+    </html>
+  `;
+
+  errorWindow.loadURL(
+    `data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`
+  );
+  errorWindow.center();
+
+  errorWindow.on("closed", () => {
+    // Don't quit the app when error window is closed
+  });
+
+  return errorWindow;
 }
 
 function createInstallerWindow() {
@@ -362,6 +739,13 @@ async function startBackendServer() {
     }
 
     console.log("Setting up backend server...");
+    console.log("📊 Using database configuration:", {
+      dbHost: global.installationConfig?.dbHost || "localhost",
+      dbPort: global.installationConfig?.dbPort || 3306,
+      dbName: global.installationConfig?.dbName || "hoppscotch_db",
+      dbUsername: global.installationConfig?.dbUsername || "root",
+      dbPasswordProvided: !!global.installationConfig?.dbPassword,
+    });
 
     // Copy backend files to writable location if not already done
     if (!fs.existsSync(workingBackendPath)) {
@@ -409,14 +793,37 @@ async function startBackendServer() {
     console.log("Starting backend process from:", workingBackendPath);
     console.log("Backend port:", backendPort);
 
-    backendProcess = spawn("npm", ["start"], {
+    // Try direct node execution instead of npm start for better reliability
+    const serverPath = path.join(workingBackendPath, "server.js");
+
+    // Prepare environment variables
+    const dbEnv = {
+      DB_HOST: global.installationConfig?.dbHost || "localhost",
+      DB_PORT: global.installationConfig?.dbPort || 3306,
+      DB_NAME: global.installationConfig?.dbName || "hoppscotch_db",
+      DB_USER: global.installationConfig?.dbUsername || "root", // Note: backend uses DB_USER not DB_USERNAME
+      DB_PASSWORD: global.installationConfig?.dbPassword || "",
+    };
+
+    console.log("🔧 Environment variables for backend:", {
+      ...dbEnv,
+      DB_PASSWORD: dbEnv.DB_PASSWORD ? "***" : "(empty)",
+    });
+
+    backendProcess = spawn("node", [serverPath], {
       cwd: workingBackendPath,
       env: {
         ...process.env,
         PORT: backendPort,
         NODE_ENV: "production",
+        // Database configuration from installer (matching backend variable names)
+        ...dbEnv,
+        // Ensure PATH includes node
+        PATH: process.env.PATH + ":/usr/local/bin:/opt/homebrew/bin",
       },
-      stdio: "pipe",
+      stdio: ["pipe", "pipe", "pipe"],
+      detached: false, // Keep attached so we can manage it
+      shell: false, // Use direct execution, no shell
     });
 
     let actualBackendPort = backendPort;
@@ -451,15 +858,49 @@ async function startBackendServer() {
 
     backendProcess.on("error", (error) => {
       console.error("Failed to start backend:", error);
+      console.error("Error details:", {
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall,
+        path: error.path,
+      });
+
+      // Try to restart the backend after a delay
+      setTimeout(async () => {
+        console.log("Attempting to restart backend...");
+        try {
+          await startBackendServer();
+        } catch (restartError) {
+          console.error("Backend restart failed:", restartError);
+        }
+      }, 5000);
+
       reject(error);
     });
 
-    backendProcess.on("close", (code) => {
-      console.log(`Backend process exited with code: ${code}`);
-      if (code !== 0) {
+    backendProcess.on("close", (code, signal) => {
+      console.log(
+        `Backend process exited with code: ${code}, signal: ${signal}`
+      );
+      if (code !== 0 && code !== null) {
         console.error("Backend process failed with code:", code);
+
+        // Don't immediately reject, try to restart
+        setTimeout(async () => {
+          console.log("Backend process died, attempting restart...");
+          try {
+            await startBackendServer();
+          } catch (restartError) {
+            console.error("Backend restart after crash failed:", restartError);
+          }
+        }, 3000);
+
         reject(new Error(`Backend process failed with exit code: ${code}`));
       }
+    });
+
+    backendProcess.on("disconnect", () => {
+      console.log("Backend process disconnected");
     });
 
     // Give backend time to start and wait for port confirmation
@@ -940,6 +1381,12 @@ ipcMain.handle("get-app-version", () => {
   return app.getVersion();
 });
 
+ipcMain.handle("get-backend-port", () => {
+  const backendPort = global.installationConfig?.backendPort || 5001;
+  console.log("📡 Frontend requesting backend port:", backendPort);
+  return backendPort;
+});
+
 ipcMain.handle("minimize-window", () => {
   if (mainWindow) {
     mainWindow.minimize();
@@ -1042,7 +1489,7 @@ async function startStaticServer(distPath) {
   const path = require("path");
   const fs = require("fs");
 
-  const staticPort = 5173;
+  const staticPort = global.installationConfig?.frontendPort || 5173;
 
   // MIME types for common file extensions
   const mimeTypes = {

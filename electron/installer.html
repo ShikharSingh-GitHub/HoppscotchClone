@@ -510,9 +510,39 @@
         transform: translateX(5px);
       }
 
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+        }
+        50% {
+          transform: scale(1.02);
+          box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.1);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+        }
+      }
+
       small {
         display: block;
         margin-top: 5px;
+      }
+
+      .summary-content {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 15px 0;
+        line-height: 1.6;
+      }
+
+      .summary-content strong {
+        color: #495057;
+        display: inline-block;
+        min-width: 140px;
       }
     </style>
   </head>
@@ -831,8 +861,33 @@
             style="display: none"></div>
         </div>
 
-        <!-- Step 6: Installation Progress -->
+        <!-- Step 6: Review and Confirm -->
         <div class="page" id="page6">
+          <h1 class="page-title">Review Installation Settings</h1>
+          <p class="page-subtitle">
+            Please review your configuration before installing.
+          </p>
+
+          <div class="config-section">
+            <div class="config-title">Installation Summary</div>
+            <div id="installationSummary" class="summary-content">
+              <!-- Summary will be populated by JavaScript -->
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 30px">
+            <div class="checkbox-group">
+              <input type="checkbox" id="confirmInstall" />
+              <label for="confirmInstall" class="checkbox-label">
+                I confirm that the above settings are correct and want to
+                proceed with the installation.
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 7: Installation Progress -->
+        <div class="page" id="page7">
           <div class="progress-section">
             <div class="install-progress" id="installProgress"></div>
             <div class="install-text" id="installText">
@@ -844,13 +899,16 @@
           </div>
         </div>
 
-        <!-- Step 7: Installation Complete -->
-        <div class="page" id="page7">
+        <!-- Step 8: Installation Complete -->
+        <div class="page" id="page8">
           <div class="progress-section">
             <div class="success-icon">🎉</div>
             <h1 class="page-title">Installation Complete!</h1>
             <p class="page-subtitle">
               Hoppscotch Clone has been successfully installed on your system.
+            </p>
+            <p class="page-subtitle" style="color: #667eea; margin-top: 10px">
+              The application will launch automatically in a moment...
             </p>
 
             <div class="config-section">
