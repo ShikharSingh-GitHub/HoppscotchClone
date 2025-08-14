@@ -8,8 +8,10 @@ const useRequestStore = create((set) => ({
     headers: {},
     body: null,
   },
-  requested: () => set((state) => ({ isRequested: !state.isRequested })),
+  responseData: null, // Add response data storage
+  requested: () => set({ isRequested: true }), // Always set to true when request is made
   setActiveRequest: (request) => set({ activeRequest: request }),
+  setResponseData: (response) => set({ responseData: response }), // Add response setter
 
   restoreFromHistory: (historyEntry) => {
     try {

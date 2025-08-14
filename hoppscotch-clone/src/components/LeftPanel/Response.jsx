@@ -14,27 +14,37 @@ const Response = () => {
 
   const [responseH, setResponseH] = useState("JSON");
 
-  const { isRequested } = useRequestStore();
+  const { isRequested, responseData } = useRequestStore();
 
-  const jsonData = {
-    method: "GET",
-    args: {},
-    data: "",
-    headers: {
-      "accept-encoding": "gzip",
-      "cdn-loop": "netlify",
-      host: "echo.hoppscotch.io",
-      "user-agent": "Proxyscotch/1.1",
-      "x-country": "US",
-      "x-forwarded-for": "169.254.169.126:17756, 2600:1900:0:2d01::2401",
-      "x-nf-account-id": "5e2b91527eb7a24fb0054390",
-      "x-nf-account-tier": "account_type_pro",
-      "x-nf-client-connection-ip": "2600:1900:0:2d01::2401",
-      "x-nf-request-id": "01JM2RB8VTJ5T1KA9JFYFSKFT1",
-    },
-    path: "/",
-    isBase64Encoded: true,
+  // Use dynamic response data or fallback to static data for demo
+  const getDisplayData = () => {
+    if (responseData && responseData.data) {
+      return responseData.data;
+    }
+
+    // Fallback static data for demonstration when no request has been made
+    return {
+      method: "GET",
+      args: {},
+      data: "",
+      headers: {
+        "accept-encoding": "gzip",
+        "cdn-loop": "netlify",
+        host: "echo.hoppscotch.io",
+        "user-agent": "Proxyscotch/1.1",
+        "x-country": "US",
+        "x-forwarded-for": "169.254.169.126:17756, 2600:1900:0:2d01::2401",
+        "x-nf-account-id": "5e2b91527eb7a24fb0054390",
+        "x-nf-account-tier": "account_type_pro",
+        "x-nf-client-connection-ip": "2600:1900:0:2d01::2401",
+        "x-nf-request-id": "01JM2RB8VTJ5T1KA9JFYFSKFT1",
+      },
+      path: "/",
+      isBase64Encoded: true,
+    };
   };
+
+  const displayData = getDisplayData();
 
   const formatJsonLines = (obj, indent = 2) => {
     const lines = [];
@@ -68,7 +78,92 @@ const Response = () => {
     return lines;
   };
 
-  const lines = formatJsonLines(jsonData);
+  const lines = formatJsonLines(displayData);
+
+  // Function to render response content based on selected tab
+  const renderResponseContent = () => {
+    if (!responseData) {
+      return (
+        <div className="text-gray-400 text-center py-8">
+          Send a request to see the response here
+        </div>
+      );
+    }
+
+    switch (responseH) {
+      case "JSON":
+        return (
+          <div className="border border-search-bg pt-3 h-96 pb-24 overflow-y-scroll">
+            {lines.map((line, index) => (
+              <div key={index} className="flex items-start">
+                <div className="w-10 text-gray-500 text-xs text-center">
+                  {index + 1}
+                </div>
+                <div className="pl-3 border-l border-search-bg leading-5">
+                  {line.split(/("[^"]*":)/g).map((part, idx) =>
+                    part.match(/^"/) ? (
+                      <span
+                        key={idx}
+                        className="text-blue-400 text-[13px] font-semibold pl-4">
+                        {part}
+                      </span>
+                    ) : part.match(/".*"/) ? (
+                      <span
+                        key={idx}
+                        className="text-purple-400 text-[13px] font-semibold pl-4">
+                        {part}
+                      </span>
+                    ) : (
+                      <span key={idx} className="text-white text-[13px] pl-4">
+                        {part}
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case "Raw":
+        return (
+          <div className="border border-search-bg p-4 h-96 overflow-y-scroll">
+            <pre className="text-[13px] text-white whitespace-pre-wrap">
+              {typeof responseData.data === "string"
+                ? responseData.data
+                : JSON.stringify(responseData.data, null, 2)}
+            </pre>
+          </div>
+        );
+
+      case "Headers":
+        return (
+          <div className="border border-search-bg p-4 h-96 overflow-y-scroll">
+            {responseData.headers &&
+              Object.entries(responseData.headers).map(([key, value]) => (
+                <div key={key} className="flex text-[13px] mb-2">
+                  <span className="text-blue-400 font-semibold mr-2">
+                    {key}:
+                  </span>
+                  <span className="text-white">{value}</span>
+                </div>
+              ))}
+          </div>
+        );
+
+      case "Test Results":
+        return (
+          <div className="border border-search-bg p-4 h-96 overflow-y-scroll">
+            <div className="text-gray-400 text-center py-8">
+              Test results will appear here when implemented
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -90,9 +185,25 @@ const Response = () => {
           </div>
 
           <div className="flex justify-between">
-            <h2 className="mt-4 mb-3 font-semibold text-xs text-zinc-500">
-              Response Body
-            </h2>
+            <div className="flex items-center space-x-4">
+              <h2 className="mt-4 mb-3 font-semibold text-xs text-zinc-500">
+                Response Body
+              </h2>
+              {responseData && (
+                <div className="flex items-center space-x-2 mt-4 mb-3">
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      responseData.status >= 200 && responseData.status < 300
+                        ? "bg-green-600 text-green-100"
+                        : responseData.status >= 400
+                        ? "bg-red-600 text-red-100"
+                        : "bg-yellow-600 text-yellow-100"
+                    }`}>
+                    {responseData.status} {responseData.statusText}
+                  </span>
+                </div>
+              )}
+            </div>
 
             <div className="flex space-x-5">
               <IconButton
@@ -134,37 +245,8 @@ const Response = () => {
             </div>
           </div>
 
-          {/* Response */}
-          <div className="border border-search-bg pt-3 h-96 pb-24 overflow-y-scroll">
-            {lines.map((line, index) => (
-              <div key={index} className="flex items-start">
-                <div className="w-10  text-gray-500 text-xs text-center">
-                  {index + 1}
-                </div>
-                <div className="pl-3 border-l border-search-bg leading-5">
-                  {line.split(/("[^"]*":)/g).map((part, idx) =>
-                    part.match(/^"/) ? (
-                      <span
-                        key={idx}
-                        className="text-blue-400 text-[13px] font-semibold pl-4">
-                        {part}
-                      </span>
-                    ) : part.match(/".*"/) ? (
-                      <span
-                        key={idx}
-                        className="text-purple-400 text-[13px] font-semibold pl-4">
-                        {part}
-                      </span>
-                    ) : (
-                      <span key={idx} className="text-white text-[13px] pl-4">
-                        {part}
-                      </span>
-                    )
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Dynamic Response Content */}
+          {renderResponseContent()}
         </div>
       ) : (
         <KeyboardShortcuts docUrl="https://docs.hoppscotch.io/documentation/features/rest-api-testing#response" />

@@ -50,7 +50,7 @@ const RouteHeader = ({ onRequestComplete }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { addHistoryEntry } = useHistoryStore();
-  const { requested } = useRequestStore();
+  const { requested, setResponseData } = useRequestStore();
 
   // Register tab restoration function
   useEffect(() => {
@@ -91,6 +91,9 @@ const RouteHeader = ({ onRequestComplete }) => {
         );
         return;
       }
+
+      // Store response data in the store for the Response component
+      setResponseData(response);
 
       requested();
 

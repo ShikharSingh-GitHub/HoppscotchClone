@@ -87,6 +87,66 @@ app.get("/health", (req, res) => {
 const historyRoutes = require("./routes/history");
 app.use("/api/history", historyRoutes);
 
+// Proxy route for CORS-blocked requests
+app.all("/api/proxy", async (req, res) => {
+  try {
+    const {
+      url,
+      method = "GET",
+      headers = {},
+      data,
+    } = req.method === "GET" ? req.query : req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: "URL parameter is required" });
+    }
+
+    console.log(`Proxying ${method} request to: ${url}`);
+
+    const axios = require("axios");
+
+    const config = {
+      method: method.toLowerCase(),
+      url: url,
+      headers: {
+        ...headers,
+        // Remove browser-specific headers that might cause issues
+        "User-Agent": "Hoppscotch-Proxy/1.0",
+      },
+      timeout: 30000,
+      validateStatus: () => true, // Accept all status codes
+    };
+
+    if (data && ["post", "put", "patch"].includes(method.toLowerCase())) {
+      config.data = data;
+    }
+
+    const response = await axios(config);
+
+    // Set CORS headers for the response
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    });
+
+    res.status(response.status).json({
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+      headers: response.headers,
+    });
+  } catch (error) {
+    console.error("Proxy request failed:", error.message);
+    res.status(500).json({
+      error: "Proxy request failed",
+      message: error.message,
+      status: 0,
+      statusText: "Network Error",
+    });
+  }
+});
+
 // 404 handler
 app.use((req, res) => {
   console.log(`404: ${req.method} ${req.url}`);
