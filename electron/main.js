@@ -132,7 +132,22 @@ ipcMain.on("installation-complete", (event, config) => {
       installerWindow.close();
       installerWindow = null;
     }
-    await startApplication();
+
+    console.log(
+      "🚀 Starting main application after installation completion..."
+    );
+    try {
+      await startApplication();
+      console.log("✅ Main application started successfully");
+    } catch (error) {
+      console.error("❌ Failed to start main application:", error);
+      // Show an error dialog to the user
+      const { dialog } = require("electron");
+      dialog.showErrorBox(
+        "Application Launch Failed",
+        `Failed to start the application: ${error.message}\n\nPlease try launching the app manually from the Applications folder.`
+      );
+    }
   }, 500);
 });
 
@@ -425,6 +440,7 @@ ipcMain.on("test-database", async (event, dbConfig) => {
 async function startApplication() {
   try {
     console.log("🚀 Starting Hoppscotch Clone application...");
+    console.log("📋 Using configuration:", global.installationConfig);
 
     // Show splash screen
     createSplashWindow();
@@ -456,10 +472,12 @@ async function startApplication() {
     }
 
     // Wait for servers to be ready
+    console.log("⏳ Waiting for servers to be ready...");
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Create main window (will load the built frontend) - this should always work
     try {
+      console.log("🖼️ Creating main window...");
       await createMainWindow();
       console.log("✅ Main window created successfully");
     } catch (error) {
@@ -479,16 +497,25 @@ async function startApplication() {
     if (splashWindow) {
       splashWindow.close();
       splashWindow = null;
+      console.log("✅ Splash screen closed");
     }
 
     console.log("🎉 Application startup completed!");
     if (backendStarted) {
-      console.log("🔧 Backend available at: http://localhost:5001");
+      console.log(
+        `🔧 Backend available at: http://localhost:${
+          global.installationConfig?.backendPort || 5001
+        }`
+      );
     } else {
       console.log("⚠️  Backend not available - check console for errors");
     }
     if (frontendStarted) {
-      console.log("🌐 Frontend available at: http://localhost:5173");
+      console.log(
+        `🌐 Frontend available at: http://localhost:${
+          global.installationConfig?.frontendPort || 5173
+        }`
+      );
     }
   } catch (error) {
     console.error("💥 Critical failure in startApplication:", error);

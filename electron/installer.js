@@ -587,17 +587,9 @@ function updateInstallationSummary() {
   const summaryElement = document.getElementById("installationSummary");
   if (!summaryElement) return;
 
-  // Ensure we have the latest configuration by reading directly from form inputs
-  const frontendPortInput = document.getElementById("frontendPort");
-  const backendPortInput = document.getElementById("backendPort");
-
-  // Update ports from form inputs if they exist and have values
-  if (frontendPortInput && frontendPortInput.value) {
-    installationConfig.frontendPort = parseInt(frontendPortInput.value);
-  }
-  if (backendPortInput && backendPortInput.value) {
-    installationConfig.backendPort = parseInt(backendPortInput.value);
-  }
+  // Use the configuration that was actually saved and validated
+  // Don't read from form inputs as they might not reflect resolved ports
+  console.log("Updating installation summary with config:", installationConfig);
 
   const summary = `
     <strong>Installation Path:</strong> ${installationConfig.installPath}<br>
@@ -620,13 +612,21 @@ function updateInstallationSummary() {
 }
 
 function finishInstallation() {
+  console.log("🏁 Finishing installation with config:", installationConfig);
+
   // Send installation complete message to main process
   if (typeof ipcRenderer !== "undefined") {
+    console.log("📤 Sending installation-complete message to main process");
     ipcRenderer.send("installation-complete", installationConfig);
+  } else {
+    console.warn(
+      "⚠️ ipcRenderer not available - installation won't complete properly"
+    );
   }
 
   // Close installer
   setTimeout(() => {
+    console.log("🚪 Closing installer window");
     if (typeof ipcRenderer !== "undefined") {
       ipcRenderer.send("close-installer");
     } else {
