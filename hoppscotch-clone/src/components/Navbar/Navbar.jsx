@@ -1,12 +1,19 @@
 import Tippy from "@tippyjs/react";
 import { CircleUserRound, CloudUpload, Download, Search } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "tippy.js/dist/tippy.css";
 import AuthStatusIndicator from "../Auth/AuthStatusIndicator";
 import SearchModal from "../Modal/Search";
 
 const Navbar = () => {
   const [search, setSearch] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    navigate("/");
+  };
 
   return (
     <>
@@ -15,11 +22,11 @@ const Navbar = () => {
 
       <header className="grid grid-cols-5 p-2 gap-x-4 h-[6.5dvh]">
         <div className="col-span-2">
-          <a
-            href="/"
-            className="uppercase lg:text-[13px] text-[12px] font-semibold ms-3">
+          <button
+            onClick={handleLogoClick}
+            className="uppercase lg:text-[13px] text-[12px] font-semibold ms-3 hover:text-emerald-400 transition-colors cursor-pointer">
             hoppscotch
-          </a>
+          </button>
         </div>
 
         <div className="col-span-1">

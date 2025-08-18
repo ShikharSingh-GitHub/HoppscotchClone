@@ -100,12 +100,175 @@ async function testServerAccessibility() {
   return backendStatus;
 }
 
+// Database schema setup function
+async function setupDatabaseSchema() {
+  console.log("🗄️ Setting up database schema for authentication...");
+
+  try {
+    const mysql = require("mysql2/promise");
+
+    // Database connection configuration
+    const dbConfig = {
+      host: global.installationConfig?.dbHost || "localhost",
+      port: global.installationConfig?.dbPort || 3306,
+      user: global.installationConfig?.dbUsername || "root",
+      password: global.installationConfig?.dbPassword || "",
+      database: global.installationConfig?.dbName || "hoppscotch_db",
+    };
+
+    console.log("Connecting to database:", {
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      database: dbConfig.database,
+    });
+
+    const connection = await mysql.createConnection(dbConfig);
+
+    // Check if tables already exist
+    const [tables] = await connection.execute(
+      "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN ('users', 'oauth_tokens')",
+      [dbConfig.database]
+    );
+
+    const existingTables = tables.map((row) => row.TABLE_NAME);
+    console.log("Existing authentication tables:", existingTables);
+
+    // Create users table if it doesn't exist
+    if (!existingTables.includes("users")) {
+      console.log("Creating users table...");
+      await connection.execute(`
+        CREATE TABLE users (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          name VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          last_login TIMESTAMP NULL,
+          is_active BOOLEAN DEFAULT true,
+          INDEX idx_email (email),
+          INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log("✅ Users table created successfully");
+    } else {
+      console.log("✓ Users table already exists");
+    }
+
+    // Create oauth_tokens table if it doesn't exist
+    if (!existingTables.includes("oauth_tokens")) {
+      console.log("Creating oauth_tokens table...");
+      await connection.execute(`
+        CREATE TABLE oauth_tokens (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT,
+          provider VARCHAR(50) NOT NULL,
+          provider_id VARCHAR(255) NOT NULL,
+          access_token TEXT,
+          refresh_token TEXT,
+          token_type VARCHAR(50) DEFAULT 'Bearer',
+          expires_at TIMESTAMP NULL,
+          scope TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE KEY unique_provider_user (provider, provider_id),
+          INDEX idx_user_id (user_id),
+          INDEX idx_provider (provider),
+          INDEX idx_expires_at (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log("✅ OAuth tokens table created successfully");
+    } else {
+      console.log("✓ OAuth tokens table already exists");
+    }
+
+    // Create request_history table if it doesn't exist (enhanced version)
+    const [historyTables] = await connection.execute(
+      "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'request_history'",
+      [dbConfig.database]
+    );
+
+    if (historyTables.length === 0) {
+      console.log("Creating enhanced request_history table...");
+      await connection.execute(`
+        CREATE TABLE request_history (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NULL,
+          url VARCHAR(2048) NOT NULL,
+          method VARCHAR(20) NOT NULL,
+          headers JSON,
+          body TEXT,
+          response_status INT,
+          response_headers JSON,
+          response_body TEXT,
+          response_time INT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          tags JSON,
+          collection_name VARCHAR(255),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+          INDEX idx_user_id (user_id),
+          INDEX idx_method (method),
+          INDEX idx_created_at (created_at),
+          INDEX idx_collection_name (collection_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log("✅ Enhanced request history table created successfully");
+    } else {
+      console.log("✓ Request history table already exists");
+
+      // Check if we need to add user_id column for existing installations
+      const [columns] = await connection.execute(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'request_history' AND COLUMN_NAME = 'user_id'",
+        [dbConfig.database]
+      );
+
+      if (columns.length === 0) {
+        console.log(
+          "Adding user_id column to existing request_history table..."
+        );
+        await connection.execute(`
+          ALTER TABLE request_history 
+          ADD COLUMN user_id INT NULL AFTER id,
+          ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+          ADD INDEX idx_user_id (user_id)
+        `);
+        console.log("✅ Enhanced request history table with user support");
+      }
+    }
+
+    await connection.end();
+    console.log("✅ Database schema setup completed successfully");
+  } catch (error) {
+    console.error("❌ Failed to setup database schema:", error);
+
+    // Don't fail the app startup if database setup fails
+    // This allows the app to work even with database issues
+    console.log("⚠️ Continuing without database authentication features");
+    console.log("💡 You can manually setup the database later");
+  }
+}
+
 // IPC handlers
 ipcMain.on("installation-complete", (event, config) => {
   console.log("Installation completed with config:", config);
 
+  // Generate secure JWT secret for authentication
+  const crypto = require("crypto");
+  const jwtSecret = crypto.randomBytes(64).toString("hex");
+
+  // Enhance configuration with authentication settings
+  const enhancedConfig = {
+    ...config,
+    jwtSecret: jwtSecret,
+    authEnabled: true,
+    oauth2Enabled: true,
+    createdAt: new Date().toISOString(),
+  };
+
   // Save configuration for future use
-  global.installationConfig = config;
+  global.installationConfig = enhancedConfig;
 
   // Ensure user data directory exists
   const userDataDir = app.getPath("userData");
@@ -119,9 +282,10 @@ ipcMain.on("installation-complete", (event, config) => {
 
   try {
     fs.writeFileSync(installedMarker, "installed");
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    fs.writeFileSync(configPath, JSON.stringify(enhancedConfig, null, 2));
     console.log("Installation marker created at:", installedMarker);
     console.log("Configuration saved at:", configPath);
+    console.log("🔐 JWT secret generated and saved securely");
   } catch (error) {
     console.error("Failed to save installation data:", error);
   }
@@ -786,15 +950,32 @@ async function startBackendServer() {
       }
     }
 
-    // Check if node_modules exists, if not install dependencies
+    // Check if dependencies are properly installed
     const nodeModulesPath = path.join(workingBackendPath, "node_modules");
-    if (!fs.existsSync(nodeModulesPath)) {
-      console.log("Installing backend dependencies...");
+    const expressRateLimitPath = path.join(
+      nodeModulesPath,
+      "express-rate-limit"
+    );
+
+    // Force fresh install if critical dependencies are missing
+    const needsInstall =
+      !fs.existsSync(nodeModulesPath) || !fs.existsSync(expressRateLimitPath);
+
+    if (needsInstall) {
+      console.log("Installing/updating backend dependencies...");
       try {
         await new Promise((installResolve, installReject) => {
           const installProcess = spawn("npm", ["install"], {
             cwd: workingBackendPath,
             stdio: "pipe",
+          });
+
+          installProcess.stdout.on("data", (data) => {
+            console.log(`npm install: ${data}`);
+          });
+
+          installProcess.stderr.on("data", (data) => {
+            console.log(`npm install stderr: ${data}`);
           });
 
           installProcess.on("close", (code) => {
@@ -813,7 +994,12 @@ async function startBackendServer() {
         reject(error);
         return;
       }
+    } else {
+      console.log("Backend dependencies already installed");
     }
+
+    // Setup database schema
+    await setupDatabaseSchema();
 
     const backendPort = global.installationConfig?.backendPort || 5001;
 
@@ -822,6 +1008,12 @@ async function startBackendServer() {
 
     // Try direct node execution instead of npm start for better reliability
     const serverPath = path.join(workingBackendPath, "server.js");
+
+    // Generate JWT secret if not configured
+    const crypto = require("crypto");
+    const jwtSecret =
+      global.installationConfig?.jwtSecret ||
+      crypto.randomBytes(64).toString("hex");
 
     // Prepare environment variables
     const dbEnv = {
@@ -832,9 +1024,21 @@ async function startBackendServer() {
       DB_PASSWORD: global.installationConfig?.dbPassword || "",
     };
 
+    // Authentication configuration
+    const authEnv = {
+      JWT_SECRET: jwtSecret,
+      JWT_EXPIRY: "24h",
+      REQUIRE_AUTH: "true", // Enable authentication by default in Electron
+      OAUTH2_ENABLED: "true", // Enable OAuth2 support
+    };
+
     console.log("🔧 Environment variables for backend:", {
       ...dbEnv,
       DB_PASSWORD: dbEnv.DB_PASSWORD ? "***" : "(empty)",
+      JWT_SECRET: "***", // Don't log the actual secret
+      JWT_EXPIRY: authEnv.JWT_EXPIRY,
+      REQUIRE_AUTH: authEnv.REQUIRE_AUTH,
+      OAUTH2_ENABLED: authEnv.OAUTH2_ENABLED,
     });
 
     backendProcess = spawn("node", [serverPath], {
@@ -845,6 +1049,8 @@ async function startBackendServer() {
         NODE_ENV: "production",
         // Database configuration from installer (matching backend variable names)
         ...dbEnv,
+        // Authentication configuration
+        ...authEnv,
         // Ensure PATH includes node
         PATH: process.env.PATH + ":/usr/local/bin:/opt/homebrew/bin",
       },
@@ -1293,6 +1499,204 @@ function createApplicationMenu() {
       label: "Tools",
       submenu: [
         {
+          label: "Authentication",
+          submenu: [
+            {
+              label: "Login",
+              accelerator: "CmdOrCtrl+L",
+              click: () => {
+                if (mainWindow) {
+                  mainWindow.webContents.send("menu-auth-login");
+                }
+              },
+            },
+            {
+              label: "Logout",
+              click: () => {
+                if (mainWindow) {
+                  mainWindow.webContents.send("menu-auth-logout");
+                }
+              },
+            },
+            { type: "separator" },
+            {
+              label: "OAuth2 Setup",
+              click: () => {
+                if (mainWindow) {
+                  mainWindow.webContents.send("menu-oauth2-setup");
+                }
+              },
+            },
+            {
+              label: "User Profile",
+              click: () => {
+                if (mainWindow) {
+                  mainWindow.webContents.send("menu-user-profile");
+                }
+              },
+            },
+          ],
+        },
+        { type: "separator" },
+        {
+          label: "Security",
+          submenu: [
+            {
+              label: "Clear Authentication Data",
+              click: async () => {
+                const { dialog } = require("electron");
+                const result = await dialog.showMessageBox(mainWindow, {
+                  type: "warning",
+                  title: "Clear Authentication Data",
+                  message:
+                    "Are you sure you want to clear all authentication data?",
+                  detail:
+                    "This will log you out and remove all stored authentication tokens.",
+                  buttons: ["Cancel", "Clear Data"],
+                  defaultId: 0,
+                  cancelId: 0,
+                });
+
+                if (result.response === 1) {
+                  if (mainWindow) {
+                    mainWindow.webContents.send("menu-clear-auth-data");
+                  }
+                }
+              },
+            },
+            {
+              label: "Generate New JWT Secret",
+              click: async () => {
+                const { dialog } = require("electron");
+                const result = await dialog.showMessageBox(mainWindow, {
+                  type: "warning",
+                  title: "Generate New JWT Secret",
+                  message:
+                    "This will invalidate all existing sessions. Continue?",
+                  detail:
+                    "All users will need to log in again after this change.",
+                  buttons: ["Cancel", "Generate New Secret"],
+                  defaultId: 0,
+                  cancelId: 0,
+                });
+
+                if (result.response === 1) {
+                  try {
+                    const crypto = require("crypto");
+                    const newSecret = crypto.randomBytes(64).toString("hex");
+
+                    // Update configuration
+                    global.installationConfig.jwtSecret = newSecret;
+
+                    // Save to config file
+                    const configPath = getConfigPath();
+                    fs.writeFileSync(
+                      configPath,
+                      JSON.stringify(global.installationConfig, null, 2)
+                    );
+
+                    dialog.showMessageBox(mainWindow, {
+                      type: "info",
+                      title: "JWT Secret Updated",
+                      message: "New JWT secret generated successfully!",
+                      detail:
+                        "Please restart the application for changes to take effect.",
+                    });
+                  } catch (error) {
+                    dialog.showErrorBox(
+                      "Error",
+                      "Failed to generate new JWT secret: " + error.message
+                    );
+                  }
+                }
+              },
+            },
+          ],
+        },
+        { type: "separator" },
+        {
+          label: "Database",
+          submenu: [
+            {
+              label: "Setup Database Schema",
+              click: async () => {
+                try {
+                  await setupDatabaseSchema();
+                  dialog.showMessageBox(mainWindow, {
+                    type: "info",
+                    title: "Database Setup Complete",
+                    message: "Database schema has been setup successfully!",
+                    detail: "All authentication tables are now ready for use.",
+                  });
+                } catch (error) {
+                  dialog.showErrorBox(
+                    "Database Error",
+                    "Failed to setup database schema: " + error.message
+                  );
+                }
+              },
+            },
+            {
+              label: "Test Database Connection",
+              click: async () => {
+                try {
+                  const mysql = require("mysql2/promise");
+                  const dbConfig = {
+                    host: global.installationConfig?.dbHost || "localhost",
+                    port: global.installationConfig?.dbPort || 3306,
+                    user: global.installationConfig?.dbUsername || "root",
+                    password: global.installationConfig?.dbPassword || "",
+                    database:
+                      global.installationConfig?.dbName || "hoppscotch_db",
+                  };
+
+                  const connection = await mysql.createConnection(dbConfig);
+                  await connection.execute("SELECT 1");
+                  await connection.end();
+
+                  dialog.showMessageBox(mainWindow, {
+                    type: "info",
+                    title: "Database Connection",
+                    message: "Database connection successful!",
+                    detail: `Connected to ${dbConfig.database} at ${dbConfig.host}:${dbConfig.port}`,
+                  });
+                } catch (error) {
+                  dialog.showErrorBox(
+                    "Database Connection Failed",
+                    `Could not connect to database: ${error.message}`
+                  );
+                }
+              },
+            },
+            {
+              label: "View Database Config",
+              click: () => {
+                const dbConfig = {
+                  host: global.installationConfig?.dbHost || "localhost",
+                  port: global.installationConfig?.dbPort || 3306,
+                  database:
+                    global.installationConfig?.dbName || "hoppscotch_db",
+                  username: global.installationConfig?.dbUsername || "root",
+                };
+
+                dialog.showMessageBox(mainWindow, {
+                  type: "info",
+                  title: "Database Configuration",
+                  message: "Current database settings:",
+                  detail: `Host: ${dbConfig.host}\nPort: ${
+                    dbConfig.port
+                  }\nDatabase: ${dbConfig.database}\nUsername: ${
+                    dbConfig.username
+                  }\n\nPassword: ${
+                    global.installationConfig?.dbPassword ? "Set" : "Not set"
+                  }`,
+                });
+              },
+            },
+          ],
+        },
+        { type: "separator" },
+        {
           label: "Start Web Servers",
           click: async () => {
             try {
@@ -1468,12 +1872,42 @@ app.whenReady().then(async () => {
       console.log("📖 Loading config from:", configPath);
       const configData = fs.readFileSync(configPath, "utf8");
       global.installationConfig = JSON.parse(configData);
-      console.log("✅ Configuration loaded:", global.installationConfig);
+
+      // Generate JWT secret if not present (for existing installations)
+      if (!global.installationConfig.jwtSecret) {
+        console.log("🔐 Generating JWT secret for existing installation...");
+        const crypto = require("crypto");
+        global.installationConfig.jwtSecret = crypto
+          .randomBytes(64)
+          .toString("hex");
+        global.installationConfig.authEnabled = true;
+        global.installationConfig.oauth2Enabled = true;
+
+        // Save updated configuration
+        try {
+          fs.writeFileSync(
+            configPath,
+            JSON.stringify(global.installationConfig, null, 2)
+          );
+          console.log("✅ JWT secret generated and configuration updated");
+        } catch (saveError) {
+          console.error("Failed to save updated configuration:", saveError);
+        }
+      }
+
+      console.log("✅ Configuration loaded:", {
+        ...global.installationConfig,
+        jwtSecret: "***", // Don't log the actual secret
+      });
     } catch (error) {
       console.log("⚠️  No saved configuration found, using defaults");
+      const crypto = require("crypto");
       global.installationConfig = {
         frontendPort: 5173,
         backendPort: 5001,
+        jwtSecret: crypto.randomBytes(64).toString("hex"),
+        authEnabled: true,
+        oauth2Enabled: true,
       };
     }
 

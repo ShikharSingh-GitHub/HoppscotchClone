@@ -3,6 +3,7 @@ import { formatDistanceToNow, isToday, isYesterday, subDays } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import "tippy.js/dist/tippy.css";
 import useHistoryStore from "../../store/historyStore";
+import { useAuthGuard } from "../Auth/AuthGuard";
 
 // Group history entries by time period
 const groupHistoryByDate = (historyItems) => {
@@ -53,11 +54,15 @@ const History = () => {
     restoreFromHistory,
   } = useHistoryStore();
 
+  const { isAuthenticated, requireAuth } = useAuthGuard();
   const [expandedGroups, setExpandedGroups] = useState({});
 
   useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+    // Only fetch history if authenticated
+    if (isAuthenticated) {
+      fetchHistory();
+    }
+  }, [fetchHistory, isAuthenticated]);
 
   // Memoize the grouped history to prevent unnecessary re-renders
   const groupedHistory = useMemo(() => {
@@ -76,12 +81,24 @@ const History = () => {
   }, [history?.length, groupedHistory]);
 
   const handleRestoreRequest = (entry) => {
+    // Check authentication before restoring
+    const authSuccess = requireAuth();
+    if (!authSuccess) {
+      return;
+    }
+
     console.log("Restoring request from history:", entry);
     console.log("Tab info - ID:", entry.tabId, "Title:", entry.tabTitle);
     restoreFromHistory(entry);
   };
 
   const handleDeleteEntry = async (id) => {
+    // Check authentication before deleting
+    const authSuccess = requireAuth();
+    if (!authSuccess) {
+      return;
+    }
+
     try {
       await deleteHistoryEntry(id);
     } catch (error) {
@@ -90,6 +107,12 @@ const History = () => {
   };
 
   const handleToggleStar = async (id) => {
+    // Check authentication before toggling star
+    const authSuccess = requireAuth();
+    if (!authSuccess) {
+      return;
+    }
+
     try {
       await toggleHistoryStar(id);
     } catch (error) {
@@ -98,6 +121,12 @@ const History = () => {
   };
 
   const handleClearAll = async () => {
+    // Check authentication before clearing all
+    const authSuccess = requireAuth();
+    if (!authSuccess) {
+      return;
+    }
+
     if (window.confirm("Are you sure you want to clear all history?")) {
       try {
         await clearAllHistory();
@@ -277,7 +306,57 @@ const History = () => {
 
       {/* History Content */}
       <div className="flex-1 overflow-y-auto">
-        {!history || history.length === 0 ? (
+        {!isAuthenticated ? (
+          <div className="flex flex-col items-center justify-center p-4 h-full min-h-[200px]">
+            <div className="w-16 h-16 mb-4 flex items-center justify-center">
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 64 64"
+                className="text-gray-500"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                />
+                <path
+                  d="M32 20V32"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M32 44V36"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M20 32L44 32"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            <span className="max-w-sm mt-2 text-center whitespace-normal text-tiny text-secondaryLight">
+              Authentication Required
+            </span>
+            <p className="text-center text-secondaryLight text-tiny mt-2 max-w-sm">
+              Please login to view and manage your request history
+            </p>
+            <button
+              onClick={() => requireAuth()}
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              Login to Access History
+            </button>
+          </div>
+        ) : !history || history.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-4 h-full min-h-[200px]">
             <div className="w-16 h-16 mb-4 flex items-center justify-center">
               <svg
