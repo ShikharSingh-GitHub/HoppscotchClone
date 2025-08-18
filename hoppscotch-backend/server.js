@@ -1,6 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./config/database");
+const createAuthRoutes = require("./routes/auth");
+const {
+  authMiddleware,
+  optionalAuthMiddleware,
+  requireScope,
+} = require("./middleware/authMiddleware");
 require("dotenv").config();
 
 const app = express();
@@ -56,7 +62,9 @@ const corsOptions = isElectron
   : {
       origin: [
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
         "http://localhost:3000",
       ],
       credentials: true,
@@ -87,9 +95,16 @@ app.get("/health", (req, res) => {
 const historyRoutes = require("./routes/history");
 app.use("/api/history", historyRoutes);
 
+// Auth routes (public endpoints)
+const authRoutes = createAuthRoutes(pool);
+app.use("/api/auth", authRoutes);
+
 // ============================================
 // DUMMY APIS FOR TESTING AND DEMO PURPOSES
 // ============================================
+
+// Apply authentication middleware to all demo API routes
+const demoApiAuth = authMiddleware(pool);
 
 // In-memory storage for demo data
 let demoUsers = [
@@ -149,29 +164,34 @@ const getNextId = (array) => Math.max(...array.map((item) => item.id), 0) + 1;
 // ============================================
 
 // GET /api/demo/users - Get all users
-app.get("/api/demo/users", (req, res) => {
-  const { page = 1, limit = 10, role } = req.query;
-  let filteredUsers = demoUsers;
+app.get(
+  "/api/demo/users",
+  demoApiAuth,
+  requireScope("api:read"),
+  (req, res) => {
+    const { page = 1, limit = 10, role } = req.query;
+    let filteredUsers = demoUsers;
 
-  if (role) {
-    filteredUsers = demoUsers.filter((user) => user.role === role);
+    if (role) {
+      filteredUsers = demoUsers.filter((user) => user.role === role);
+    }
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+    res.json({
+      success: true,
+      data: paginatedUsers,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: filteredUsers.length,
+        totalPages: Math.ceil(filteredUsers.length / limit),
+      },
+    });
   }
-
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + parseInt(limit);
-  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-  res.json({
-    success: true,
-    data: paginatedUsers,
-    pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total: filteredUsers.length,
-      totalPages: Math.ceil(filteredUsers.length / limit),
-    },
-  });
-});
+);
 
 // GET /api/demo/users/:id - Get user by ID
 app.get("/api/demo/users/:id", (req, res) => {

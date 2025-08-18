@@ -2,6 +2,7 @@ import Tippy from "@tippyjs/react";
 import { CircleUserRound, CloudUpload, Download, Search } from "lucide-react";
 import { useState } from "react";
 import "tippy.js/dist/tippy.css";
+import AuthStatusIndicator from "../Auth/AuthStatusIndicator";
 import SearchModal from "../Modal/Search";
 
 const Navbar = () => {
@@ -70,9 +71,8 @@ const Navbar = () => {
               <span className="font-semibold">Save My Workspace</span>
             </button>
 
-            <button className="text-xs bg-btn hover:bg-btn-hover py-1 px-4 font-semibold h-8 rounded">
-              Login
-            </button>
+            {/* Authentication Status Indicator */}
+            <AuthStatusIndicator />
           </div>
         </div>
       </header>

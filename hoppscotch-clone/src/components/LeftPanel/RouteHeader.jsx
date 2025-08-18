@@ -14,6 +14,7 @@ import { useTabContext } from "../../contexts/TabContext";
 import { makeApiRequest } from "../../services/requestService";
 import useHistoryStore from "../../store/historyStore";
 import useRequestStore from "../../store/store";
+import { useAuthGuard } from "../Auth/AuthGuard";
 import IconButton from "../IconButton/IconButton";
 import RequestSection from "./RequestSection";
 
@@ -51,6 +52,7 @@ const RouteHeader = ({ onRequestComplete }) => {
 
   const { addHistoryEntry } = useHistoryStore();
   const { requested, setResponseData } = useRequestStore();
+  const { requireAuth } = useAuthGuard();
 
   // Register tab restoration function
   useEffect(() => {
@@ -64,6 +66,16 @@ const RouteHeader = ({ onRequestComplete }) => {
 
   const handleSendRequest = async () => {
     if (isRequestInProgress) return;
+
+    // Check authentication before sending request
+    const authSuccess = requireAuth(() => {
+      console.log("🔐 Authentication successful, proceeding with request");
+    });
+
+    if (!authSuccess) {
+      console.log("🚫 Authentication required, blocking request");
+      return;
+    }
 
     try {
       setIsRequestInProgress(true);

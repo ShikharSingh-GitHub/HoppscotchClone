@@ -1,4 +1,5 @@
 import axios from "axios";
+import useAuthStore from "../store/authStore";
 
 /**
  * Makes an HTTP request using the provided request data
@@ -14,15 +15,27 @@ export const makeApiRequest = async (requestData) => {
       throw new Error("URL is required");
     }
 
+    // Get authentication header if available
+    const authHeader = useAuthStore.getState().getAuthHeader();
+
+    // Merge headers with authentication
+    const requestHeaders = { ...headers };
+    if (authHeader) {
+      requestHeaders["Authorization"] = authHeader;
+      console.log("🔐 Added authentication header");
+    }
+
     // Process the body based on Content-Type
     let processedBody = body;
-    const contentType = headers["Content-Type"] || headers["content-type"];
+    const contentType =
+      requestHeaders["Content-Type"] || requestHeaders["content-type"];
 
     console.log(`🌐 Making ${method} request to ${url}`);
     console.log("📤 Request config:");
-    console.log("  - Headers:", headers);
+    console.log("  - Headers:", requestHeaders);
     console.log("  - Body:", body);
     console.log("  - Content-Type:", contentType);
+    console.log("  - Authenticated:", !!authHeader);
 
     if (
       body &&
@@ -41,7 +54,7 @@ export const makeApiRequest = async (requestData) => {
     const config = {
       method: method || "GET",
       url: url,
-      headers: headers,
+      headers: requestHeaders,
       data: processedBody,
       timeout: 30000,
       validateStatus: (status) => true,
@@ -105,6 +118,20 @@ export const makeApiRequest = async (requestData) => {
 const makeProxyRequest = async (requestData) => {
   const { method, url, headers = {}, body = null } = requestData;
 
+  // Get authentication header for proxy request
+  const authHeader = useAuthStore.getState().getAuthHeader();
+
+  // Merge headers with authentication for proxy request
+  const proxyHeaders = {
+    "Content-Type": "application/json",
+    ...headers,
+  };
+
+  if (authHeader) {
+    proxyHeaders["Authorization"] = authHeader;
+    console.log("🔐 Added authentication header to proxy request");
+  }
+
   // Process the body based on Content-Type
   let processedBody = body;
   const contentType = headers["Content-Type"] || headers["content-type"];
@@ -122,13 +149,14 @@ const makeProxyRequest = async (requestData) => {
   const proxyPayload = {
     url: url,
     method: method || "GET",
-    headers: headers,
-    data: processedBody,
+    headers: headers, // Original headers for the target request
+    body: processedBody,
   };
 
-  console.log(`Making proxy request for ${method} ${url}`);
+  console.log("🔄 Making proxy request:", proxyPayload);
 
   const response = await axios.post(proxyUrl, proxyPayload, {
+    headers: proxyHeaders, // Headers for the proxy request (including auth)
     timeout: 30000,
     validateStatus: (status) => true,
   });

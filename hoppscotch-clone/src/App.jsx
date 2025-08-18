@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import "./App.css";
 import Footer from "./components/Footer/Footer";
+import AuthModal from "./components/Modal/AuthModal";
 import Navbar from "./components/Navbar/Navbar";
 import Sidebar from "./components/Sidebar/Sidebar";
 import GraphQLPanel from "./pages/GraphQLPanel";
@@ -38,6 +39,9 @@ function App() {
 
         {/* Footer takes full width at the bottom */}
         <Footer />
+
+        {/* Global Authentication Modal */}
+        <AuthModal />
       </div>
     </Router>
   );
