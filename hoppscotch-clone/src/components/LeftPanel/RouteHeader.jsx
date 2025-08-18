@@ -75,18 +75,24 @@ const RouteHeader = ({ onRequestComplete }) => {
         body: activeTab.body || null,
       };
 
-      console.log("Sending request:", requestData);
+      console.log("🚀 Sending request:", requestData);
+      console.log("📝 Request details:");
+      console.log("  - Method:", requestData.method);
+      console.log("  - URL:", requestData.url);
+      console.log("  - Headers:", requestData.headers);
+      console.log("  - Body:", requestData.body);
+      console.log("  - Body type:", typeof requestData.body);
 
       const startTime = Date.now();
       const response = await makeApiRequest(requestData);
       const endTime = Date.now();
       const responseTime = endTime - startTime;
 
-      console.log("Request completed:", response);
+      console.log("✅ Request completed:", response);
 
       if (!response || response.error) {
         console.error(
-          "Request failed:",
+          "❌ Request failed:",
           response?.statusText || "Unknown error"
         );
         return;
@@ -317,7 +323,7 @@ const RouteHeader = ({ onRequestComplete }) => {
               </div>
 
               {seeAllMethods && (
-                <div className="absolute top-10 left-0 bg-search-bg-hover w-full rounded p-2 border border-search-bg z-10">
+                <div className="absolute top-10 left-0 bg-search-bg-hover w-full rounded p-2 border border-search-bg z-30">
                   {methods.map((method) => (
                     <button
                       onClick={() => updateMethod(method)}

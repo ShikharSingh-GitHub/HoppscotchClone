@@ -19,29 +19,13 @@ const Response = () => {
   // Use dynamic response data or fallback to static data for demo
   const getDisplayData = () => {
     if (responseData && responseData.data) {
+      // Our API returns data in the format: { success: true, data: {...} }
+      // So responseData.data contains the actual API response
       return responseData.data;
     }
 
-    // Fallback static data for demonstration when no request has been made
-    return {
-      method: "GET",
-      args: {},
-      data: "",
-      headers: {
-        "accept-encoding": "gzip",
-        "cdn-loop": "netlify",
-        host: "echo.hoppscotch.io",
-        "user-agent": "Proxyscotch/1.1",
-        "x-country": "US",
-        "x-forwarded-for": "169.254.169.126:17756, 2600:1900:0:2d01::2401",
-        "x-nf-account-id": "5e2b91527eb7a24fb0054390",
-        "x-nf-account-tier": "account_type_pro",
-        "x-nf-client-connection-ip": "2600:1900:0:2d01::2401",
-        "x-nf-request-id": "01JM2RB8VTJ5T1KA9JFYFSKFT1",
-      },
-      path: "/",
-      isBase64Encoded: true,
-    };
+    // If no response data, show empty state
+    return null;
   };
 
   const displayData = getDisplayData();
@@ -78,7 +62,8 @@ const Response = () => {
     return lines;
   };
 
-  const lines = formatJsonLines(displayData);
+  // Only format JSON if we have data
+  const lines = displayData ? formatJsonLines(displayData) : [];
 
   // Function to render response content based on selected tab
   const renderResponseContent = () => {

@@ -14,14 +14,35 @@ export const makeApiRequest = async (requestData) => {
       throw new Error("URL is required");
     }
 
-    console.log(`Making ${method} request to ${url}`);
+    // Process the body based on Content-Type
+    let processedBody = body;
+    const contentType = headers["Content-Type"] || headers["content-type"];
+
+    console.log(`🌐 Making ${method} request to ${url}`);
+    console.log("📤 Request config:");
+    console.log("  - Headers:", headers);
+    console.log("  - Body:", body);
+    console.log("  - Content-Type:", contentType);
+
+    if (
+      body &&
+      typeof body === "string" &&
+      contentType === "application/json"
+    ) {
+      try {
+        // Ensure valid JSON for JSON requests
+        processedBody = JSON.parse(body);
+      } catch (e) {
+        console.warn("Invalid JSON body, sending as string");
+      }
+    }
 
     // First, try direct request
     const config = {
       method: method || "GET",
       url: url,
       headers: headers,
-      data: body,
+      data: processedBody,
       timeout: 30000,
       validateStatus: (status) => true,
     };
@@ -84,12 +105,25 @@ export const makeApiRequest = async (requestData) => {
 const makeProxyRequest = async (requestData) => {
   const { method, url, headers = {}, body = null } = requestData;
 
+  // Process the body based on Content-Type
+  let processedBody = body;
+  const contentType = headers["Content-Type"] || headers["content-type"];
+
+  if (body && typeof body === "string" && contentType === "application/json") {
+    try {
+      // Ensure valid JSON for JSON requests
+      processedBody = JSON.parse(body);
+    } catch (e) {
+      console.warn("Invalid JSON body, sending as string");
+    }
+  }
+
   const proxyUrl = "http://localhost:5001/api/proxy";
   const proxyPayload = {
     url: url,
     method: method || "GET",
     headers: headers,
-    data: body,
+    data: processedBody,
   };
 
   console.log(`Making proxy request for ${method} ${url}`);

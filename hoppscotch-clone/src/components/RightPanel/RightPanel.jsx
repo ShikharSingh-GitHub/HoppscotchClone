@@ -619,7 +619,7 @@ const RightPanel = () => {
         )}
 
         {/* Active Panel Content */}
-        {renderActivePanel()}
+        <div className="flex-1 overflow-hidden">{renderActivePanel()}</div>
       </div>
     </div>
   );
