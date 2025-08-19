@@ -31,17 +31,29 @@ class StorageInterface {
       const storageType = storageConfig.storageType;
 
       if (!storageType) {
-        console.warn("⚠️ No storage type configured");
-        return { success: false, error: "No storage type configured" };
+        // If no storage type is configured, default to JSON (no login required)
+        console.log(
+          "⚠️ No storage type configured, defaulting to JSON storage"
+        );
+        await this.switchToStorageType("json");
+        storageConfig.setStorageType("json");
+      } else {
+        // Initialize the configured service
+        await this.switchToStorageType(storageType);
       }
-
-      // Initialize the appropriate service
-      await this.switchToStorageType(storageType);
 
       this.initialized = true;
       console.log(
-        `✅ Storage Interface initialized with ${storageType} storage`
+        `✅ Storage Interface initialized with ${this.getCurrentStorageType()} storage`
       );
+
+      // Log special message for JSON storage
+      if (this.getCurrentStorageType() === "json") {
+        console.log(
+          "🎉 JSON Storage active - No login required, works offline!"
+        );
+      }
+
       return { success: true };
     } catch (error) {
       console.error("❌ Failed to initialize Storage Interface:", error);

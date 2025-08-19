@@ -67,17 +67,6 @@ const RouteHeader = ({ onRequestComplete }) => {
   const handleSendRequest = async () => {
     if (isRequestInProgress) return;
 
-    // Check authentication before sending request
-    const authSuccess = requireAuth(() => {
-      console.log("🔐 Authentication successful, proceeding with request");
-    });
-
-    if (!authSuccess) {
-      console.log("🚫 Authentication required, blocking request");
-      alert("Please authenticate first to send requests");
-      return;
-    }
-
     try {
       setIsRequestInProgress(true);
 
@@ -369,7 +358,7 @@ const RouteHeader = ({ onRequestComplete }) => {
             <Tippy
               content={
                 <span className="text-[10px] font-semibold">
-                  {!isAuthenticated ? "Login Required" : "Send"}{" "}
+                  Send{" "}
                   <span className="bg-zinc-500 text-gray-300 px-1 rounded py[2px]">
                     ctrl
                   </span>
@@ -384,15 +373,9 @@ const RouteHeader = ({ onRequestComplete }) => {
                 className={`px-3 font-semibold text-center text-xs w-full h-full rounded-l transition-colors ${
                   isRequestInProgress
                     ? "bg-gray-600 cursor-not-allowed"
-                    : !isAuthenticated
-                    ? "bg-orange-600 hover:bg-orange-700"
                     : "bg-btn hover:bg-btn-hover"
                 }`}>
-                {isRequestInProgress
-                  ? "Sending..."
-                  : !isAuthenticated
-                  ? "Login Required"
-                  : "Send"}
+                {isRequestInProgress ? "Sending..." : "Send"}
               </button>
             </Tippy>
 

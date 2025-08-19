@@ -1,4 +1,4 @@
-import { Database, FileText, HardDrive, Zap } from "lucide-react";
+import { Check, Database, FileText, HardDrive, Zap } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import storageInterface from "../../services/storageInterface";
 import useStorageConfigStore from "../../store/storageConfigStore";
@@ -12,13 +12,15 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
     json: { available: true, checking: false },
   });
 
-  const { markPreferenceModalShown } = useStorageConfigStore();
+  const { markPreferenceModalShown, currentStorage } = useStorageConfigStore();
 
   useEffect(() => {
     if (isOpen) {
+      // Pre-select current storage if available, otherwise default to JSON
+      setSelectedStorage(currentStorage || "json");
       checkStorageAvailability();
     }
-  }, [isOpen]);
+  }, [isOpen, currentStorage]);
 
   const checkStorageAvailability = async () => {
     setStorageOptions((prev) => ({
@@ -37,11 +39,9 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
         json: { available: true, checking: false },
       });
 
-      // If database is available, pre-select it
-      if (dbAvailable && !selectedStorage) {
-        setSelectedStorage("database");
-      } else if (!selectedStorage) {
-        setSelectedStorage("json");
+      // Only set storage selection if not already set
+      if (!selectedStorage) {
+        setSelectedStorage(currentStorage || "json");
       }
     } catch (error) {
       console.error("Error checking storage availability:", error);
@@ -50,7 +50,7 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
         json: { available: true, checking: false },
       });
       if (!selectedStorage) {
-        setSelectedStorage("json");
+        setSelectedStorage(currentStorage || "json");
       }
     }
   };
@@ -69,6 +69,12 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
       const result = await storageConfig.switchStorageType(selectedStorage);
 
       if (!result.success) {
+        if (result.requiresAuth) {
+          // Authentication modal will be shown automatically by the storage config
+          console.log("🔐 Authentication required - login modal opened");
+          onClose(); // Close storage modal to show auth modal
+          return;
+        }
         throw new Error(result.error || "Failed to switch storage type");
       }
 
@@ -118,9 +124,9 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
         <div className="space-y-3 mb-6">
           {/* Database Storage Option */}
           <div
-            className={`border rounded-lg p-4 cursor-pointer transition-all ${
+            className={`border rounded-lg p-4 cursor-pointer transition-all relative ${
               selectedStorage === "database"
-                ? "border-accent bg-accent bg-opacity-10"
+                ? "border-accent bg-accent bg-opacity-20 ring-2 ring-accent ring-opacity-50"
                 : "border-dividerLight hover:border-zinc-500"
             } ${
               !storageOptions.database.available &&
@@ -133,11 +139,28 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
                 setSelectedStorage("database");
               }
             }}>
+            {/* Selection Indicator */}
+            {selectedStorage === "database" && (
+              <div className="absolute top-3 right-3">
+                <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            )}
+
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0">
-                <Database className="w-6 h-6 text-accent mt-1" />
+                <Database
+                  className={`w-6 h-6 mt-1 ${
+                    selectedStorage === "database"
+                      ? "text-accent"
+                      : "text-zinc-400"
+                  }`}
+                />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 pr-8">
+                {" "}
+                {/* Add right padding for selection indicator */}
                 <div className="flex items-center space-x-2">
                   <h3 className="font-medium text-white">Database Storage</h3>
                   {storageOptions.database.checking && (
@@ -148,6 +171,9 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
                       Available
                     </span>
                   )}
+                  <span className="px-2 py-1 bg-yellow-600 text-white text-xs rounded">
+                    Login Required
+                  </span>
                   {!storageOptions.database.available &&
                     !storageOptions.database.checking && (
                       <span className="px-2 py-1 bg-red-600 text-white text-xs rounded">
@@ -156,13 +182,14 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
                     )}
                 </div>
                 <p className="text-zinc-400 text-sm mt-1">
-                  Store history in MySQL database. Best for shared environments
-                  and large datasets.
+                  Store history in MySQL database. Requires login for
+                  authentication. Best for shared environments and large
+                  datasets.
                 </p>
                 <div className="flex items-center space-x-4 mt-2 text-xs text-zinc-500">
                   <span>✓ Shared access</span>
                   <span>✓ Advanced search</span>
-                  <span>✓ Backup & sync</span>
+                  <span>⚠️ Login required</span>
                 </div>
               </div>
             </div>
@@ -170,31 +197,51 @@ const StoragePreferenceModal = ({ isOpen, onClose, onStorageSelected }) => {
 
           {/* JSON Storage Option */}
           <div
-            className={`border rounded-lg p-4 cursor-pointer transition-all ${
+            className={`border rounded-lg p-4 cursor-pointer transition-all relative ${
               selectedStorage === "json"
-                ? "border-accent bg-accent bg-opacity-10"
+                ? "border-accent bg-accent bg-opacity-20 ring-2 ring-accent ring-opacity-50"
                 : "border-dividerLight hover:border-zinc-500"
             }`}
             onClick={() => setSelectedStorage("json")}>
+            {/* Selection Indicator */}
+            {selectedStorage === "json" && (
+              <div className="absolute top-3 right-3">
+                <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            )}
+
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0">
-                <FileText className="w-6 h-6 text-blue-400 mt-1" />
+                <FileText
+                  className={`w-6 h-6 mt-1 ${
+                    selectedStorage === "json"
+                      ? "text-blue-400"
+                      : "text-zinc-400"
+                  }`}
+                />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 pr-8">
+                {" "}
+                {/* Add right padding for selection indicator */}
                 <div className="flex items-center space-x-2">
                   <h3 className="font-medium text-white">JSON Storage</h3>
+                  <span className="px-2 py-1 bg-green-600 text-white text-xs rounded">
+                    No Login
+                  </span>
                   <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded">
-                    No Setup
+                    Works Offline
                   </span>
                 </div>
                 <p className="text-zinc-400 text-sm mt-1">
-                  Store history locally in JSON files. No database setup
-                  required.
+                  Store history locally without any login or server connection.
+                  Your data stays on your device.
                 </p>
                 <div className="flex items-center space-x-4 mt-2 text-xs text-zinc-500">
-                  <span>✓ No setup</span>
-                  <span>✓ Local files</span>
-                  <span>✓ Export/Import</span>
+                  <span>✓ No login required</span>
+                  <span>✓ Works offline</span>
+                  <span>✓ Private & secure</span>
                 </div>
               </div>
             </div>

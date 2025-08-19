@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Authentication-Aware Storage Switching</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #1a1a1a;
+        color: #fff;
+      }
+
+      .test-section {
+        background: #2a2a2a;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        border: 1px solid #3a3a3a;
+      }
+
+      .test-button {
+        background: #0ea5e9;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+      }
+
+      .test-button:hover {
+        background: #0284c7;
+      }
+
+      .test-button:disabled {
+        background: #64748b;
+        cursor: not-allowed;
+      }
+
+      .log-output {
+        background: #111;
+        color: #0ea5e9;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        max-height: 300px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        margin-top: 10px;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .status.json {
+        background: #065f46;
+        color: #10b981;
+      }
+
+      .status.database {
+        background: #7c2d12;
+        color: #f97316;
+      }
+
+      .status.unavailable {
+        background: #7f1d1d;
+        color: #ef4444;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 Authentication-Aware Storage Switching Test</h1>
+    <p>
+      This page tests the refined authentication flow where JSON storage works
+      without login but database storage requires authentication.
+    </p>
+
+    <div class="test-section">
+      <h2>📊 Current Status</h2>
+      <p>
+        <strong>Current Storage:</strong>
+        <span id="currentStorage" class="status">Loading...</span>
+      </p>
+      <p>
+        <strong>Authentication:</strong>
+        <span id="authStatus" class="status">Loading...</span>
+      </p>
+      <p>
+        <strong>Database Available:</strong>
+        <span id="dbStatus" class="status">Loading...</span>
+      </p>
+      <button class="test-button" onclick="updateStatus()">
+        🔄 Refresh Status
+      </button>
+    </div>
+
+    <div class="test-section">
+      <h2>🧪 Test Scenarios</h2>
+
+      <h3>Scenario 1: JSON Storage (No Authentication Required)</h3>
+      <p>Test that JSON storage works immediately without requiring login.</p>
+      <button class="test-button" onclick="testJSONStorage()">
+        📁 Test JSON Storage
+      </button>
+      <button class="test-button" onclick="addTestHistory()">
+        ➕ Add Test History
+      </button>
+      <button class="test-button" onclick="viewHistory()">
+        👁️ View History
+      </button>
+
+      <h3>Scenario 2: Database Storage (Authentication Required)</h3>
+      <p>
+        Test that switching to database storage triggers authentication modal
+        when not logged in.
+      </p>
+      <button class="test-button" onclick="testDatabaseStorage()">
+        🗄️ Test Database Storage
+      </button>
+      <button class="test-button" onclick="simulateLogin()">
+        🔐 Simulate Login
+      </button>
+      <button class="test-button" onclick="simulateLogout()">
+        🚪 Simulate Logout
+      </button>
+
+      <h3>Scenario 3: Post-Authentication Database Switch</h3>
+      <p>
+        Test that after successful login, the system automatically switches to
+        database storage.
+      </p>
+      <button class="test-button" onclick="testAuthFlow()">
+        🔄 Test Complete Auth Flow
+      </button>
+    </div>
+
+    <div class="test-section">
+      <h2>📋 Test Log</h2>
+      <button class="test-button" onclick="clearLog()">🗑️ Clear Log</button>
+      <div id="logOutput" class="log-output">Test started...\n</div>
+    </div>
+
+    <script>
+      // Log function
+      function log(message) {
+        const logOutput = document.getElementById("logOutput");
+        const timestamp = new Date().toLocaleTimeString();
+        logOutput.textContent += `[${timestamp}] ${message}\n`;
+        logOutput.scrollTop = logOutput.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById("logOutput").textContent = "";
+      }
+
+      // Status update function
+      async function updateStatus() {
+        try {
+          // Open the main app in a new window to access its stores
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          // Wait a bit for the app to load
+          setTimeout(async () => {
+            try {
+              // Access the stores from the app window
+              const storageStore = appWindow.useStorageConfigStore?.getState();
+              const authStore = appWindow.useAuthStore?.getState();
+
+              if (storageStore) {
+                // Update current storage
+                const currentStorage = storageStore.currentStorage || "unknown";
+                const storageEl = document.getElementById("currentStorage");
+                storageEl.textContent = currentStorage.toUpperCase();
+                storageEl.className = `status ${currentStorage}`;
+
+                // Update database availability
+                const dbAvailable =
+                  storageStore.availability?.database || false;
+                const dbEl = document.getElementById("dbStatus");
+                dbEl.textContent = dbAvailable ? "Available" : "Unavailable";
+                dbEl.className = `status ${
+                  dbAvailable ? "database" : "unavailable"
+                }`;
+
+                log(
+                  `📊 Storage: ${currentStorage}, DB Available: ${dbAvailable}`
+                );
+              }
+
+              if (authStore) {
+                // Update auth status
+                const isAuth = authStore.isValidAuth
+                  ? authStore.isValidAuth()
+                  : false;
+                const authEl = document.getElementById("authStatus");
+                authEl.textContent = isAuth
+                  ? "Authenticated"
+                  : "Not Authenticated";
+                authEl.className = `status ${
+                  isAuth ? "database" : "unavailable"
+                }`;
+
+                log(`🔐 Authentication: ${isAuth ? "Valid" : "Invalid"}`);
+              }
+
+              appWindow.close();
+            } catch (error) {
+              log(`❌ Error accessing app stores: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error updating status: ${error.message}`);
+        }
+      }
+
+      // Test JSON storage
+      async function testJSONStorage() {
+        log("🧪 Testing JSON storage...");
+        try {
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          setTimeout(async () => {
+            try {
+              const storageStore = appWindow.useStorageConfigStore?.getState();
+
+              if (storageStore && storageStore.switchStorageType) {
+                const result = await storageStore.switchStorageType("json");
+                log(`📁 JSON storage switch result: ${JSON.stringify(result)}`);
+
+                if (result.success) {
+                  log("✅ JSON storage works without authentication!");
+                } else {
+                  log(`❌ JSON storage failed: ${result.error}`);
+                }
+              }
+
+              appWindow.close();
+            } catch (error) {
+              log(`❌ Error testing JSON storage: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error in testJSONStorage: ${error.message}`);
+        }
+      }
+
+      // Test database storage
+      async function testDatabaseStorage() {
+        log("🧪 Testing database storage (should require auth)...");
+        try {
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          setTimeout(async () => {
+            try {
+              const storageStore = appWindow.useStorageConfigStore?.getState();
+
+              if (storageStore && storageStore.switchStorageType) {
+                const result = await storageStore.switchStorageType("database");
+                log(
+                  `🗄️ Database storage switch result: ${JSON.stringify(result)}`
+                );
+
+                if (result.requiresAuth) {
+                  log("✅ Database storage correctly requires authentication!");
+                  log("🔐 Check if auth modal appeared in the app window");
+                } else if (result.success) {
+                  log(
+                    "✅ Database storage works (user is already authenticated)"
+                  );
+                } else {
+                  log(`❌ Database storage failed: ${result.error}`);
+                }
+              }
+
+              // Don't close window immediately so user can see auth modal
+              setTimeout(() => appWindow.close(), 5000);
+            } catch (error) {
+              log(`❌ Error testing database storage: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error in testDatabaseStorage: ${error.message}`);
+        }
+      }
+
+      // Add test history
+      async function addTestHistory() {
+        log("➕ Adding test history entry...");
+        try {
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          setTimeout(async () => {
+            try {
+              const historyStore = appWindow.useHistoryStore?.getState();
+
+              if (historyStore && historyStore.addHistory) {
+                const testEntry = {
+                  id: Date.now().toString(),
+                  timestamp: new Date().toISOString(),
+                  method: "GET",
+                  url: "https://api.github.com/users/octocat",
+                  status: 200,
+                  responseTime: 123,
+                };
+
+                await historyStore.addHistory(testEntry);
+                log("✅ Test history entry added successfully!");
+              }
+
+              appWindow.close();
+            } catch (error) {
+              log(`❌ Error adding test history: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error in addTestHistory: ${error.message}`);
+        }
+      }
+
+      // View history
+      async function viewHistory() {
+        log("👁️ Viewing current history...");
+        try {
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          setTimeout(async () => {
+            try {
+              const historyStore = appWindow.useHistoryStore?.getState();
+
+              if (historyStore) {
+                const history = historyStore.history || [];
+                log(`📋 History count: ${history.length}`);
+
+                if (history.length > 0) {
+                  log("📝 Recent entries:");
+                  history.slice(-3).forEach((entry, index) => {
+                    log(
+                      `  ${index + 1}. ${entry.method} ${entry.url} - ${
+                        entry.status
+                      }`
+                    );
+                  });
+                } else {
+                  log("📝 No history entries found");
+                }
+              }
+
+              appWindow.close();
+            } catch (error) {
+              log(`❌ Error viewing history: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error in viewHistory: ${error.message}`);
+        }
+      }
+
+      // Simulate login (for testing)
+      async function simulateLogin() {
+        log("🔐 Simulating user login...");
+        try {
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          setTimeout(async () => {
+            try {
+              const authStore = appWindow.useAuthStore?.getState();
+
+              if (authStore && authStore.setUserToken) {
+                // Simulate a successful login
+                const mockTokenData = {
+                  access_token: "mock-token-" + Date.now(),
+                  user: {
+                    id: 1,
+                    email: "test@example.com",
+                    name: "Test User",
+                  },
+                  expires_in: 3600,
+                };
+
+                authStore.setUserToken(mockTokenData);
+                log("✅ Mock login successful!");
+                log("🔄 Check if automatic database switch occurs...");
+              }
+
+              setTimeout(() => appWindow.close(), 3000);
+            } catch (error) {
+              log(`❌ Error simulating login: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error in simulateLogin: ${error.message}`);
+        }
+      }
+
+      // Simulate logout
+      async function simulateLogout() {
+        log("🚪 Simulating user logout...");
+        try {
+          const appWindow = window.open(
+            "http://localhost:5175",
+            "hoppscotch-app",
+            "width=1200,height=800"
+          );
+
+          setTimeout(async () => {
+            try {
+              const authStore = appWindow.useAuthStore?.getState();
+
+              if (authStore && authStore.clearAuth) {
+                authStore.clearAuth();
+                log("✅ Mock logout successful!");
+              }
+
+              appWindow.close();
+            } catch (error) {
+              log(`❌ Error simulating logout: ${error.message}`);
+              appWindow.close();
+            }
+          }, 2000);
+        } catch (error) {
+          log(`❌ Error in simulateLogout: ${error.message}`);
+        }
+      }
+
+      // Test complete auth flow
+      async function testAuthFlow() {
+        log("🔄 Testing complete authentication flow...");
+
+        // First, ensure we're logged out
+        await simulateLogout();
+
+        setTimeout(async () => {
+          // Try to switch to database (should show auth modal)
+          await testDatabaseStorage();
+
+          setTimeout(async () => {
+            // Simulate login (should trigger auto-switch)
+            await simulateLogin();
+
+            setTimeout(async () => {
+              // Check final status
+              await updateStatus();
+              log("🏁 Complete auth flow test finished!");
+            }, 2000);
+          }, 3000);
+        }, 2000);
+      }
+
+      // Initialize
+      log("🚀 Authentication-aware storage switching test loaded");
+      log('💡 Click "Refresh Status" to see current state');
+      log("🧪 Use test buttons to verify functionality");
+
+      // Auto-update status on load
+      setTimeout(updateStatus, 1000);
+    </script>
+  </body>
+</html>

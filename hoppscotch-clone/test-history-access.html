@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>History Access Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #1a1a1a;
+        color: #fff;
+      }
+
+      .test-section {
+        background: #2a2a2a;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        border: 1px solid #3a3a3a;
+      }
+
+      .test-button {
+        background: #0ea5e9;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+      }
+
+      .test-button:hover {
+        background: #0284c7;
+      }
+
+      .log-output {
+        background: #111;
+        color: #0ea5e9;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📚 History Access Test - JSON Storage</h1>
+    <p>
+      This page tests if the History section works without authentication when
+      using JSON storage.
+    </p>
+
+    <div class="test-section">
+      <h2>🧪 Test Scenarios</h2>
+
+      <button class="test-button" onclick="testHistoryAccess()">
+        📚 Test History Access
+      </button>
+      <button class="test-button" onclick="switchToJSONAndTest()">
+        🔄 Switch to JSON & Test
+      </button>
+      <button class="test-button" onclick="addTestHistory()">
+        ➕ Add Test History
+      </button>
+      <button class="test-button" onclick="viewHistoryStatus()">
+        👁️ View History Status
+      </button>
+      <button class="test-button" onclick="openMainApp()">
+        🚀 Open Main App
+      </button>
+      <button class="test-button" onclick="clearLog()">🗑️ Clear Log</button>
+
+      <div id="logOutput" class="log-output">Test initialized...\n</div>
+    </div>
+
+    <script>
+      // Log function
+      function log(message) {
+        const logOutput = document.getElementById("logOutput");
+        const timestamp = new Date().toLocaleTimeString();
+        logOutput.textContent += `[${timestamp}] ${message}\n`;
+        logOutput.scrollTop = logOutput.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById("logOutput").textContent = "";
+      }
+
+      // Test history access in main app
+      function testHistoryAccess() {
+        log("🧪 Testing History access...");
+        const appWindow = window.open(
+          "http://localhost:5175",
+          "hoppscotch-app",
+          "width=1200,height=800"
+        );
+
+        setTimeout(() => {
+          try {
+            // Run the test script
+            const script = document.createElement("script");
+            script.src = "/test-history-access.js";
+            appWindow.document.head.appendChild(script);
+
+            log("✅ Test script loaded in main app");
+          } catch (error) {
+            log(`❌ Error loading test script: ${error.message}`);
+          }
+        }, 2000);
+      }
+
+      // Switch to JSON storage and test
+      function switchToJSONAndTest() {
+        log("🔄 Switching to JSON storage and testing...");
+        const appWindow = window.open(
+          "http://localhost:5175",
+          "hoppscotch-app",
+          "width=1200,height=800"
+        );
+
+        setTimeout(() => {
+          try {
+            const storageStore = appWindow.useStorageConfigStore?.getState();
+
+            if (storageStore) {
+              log(
+                "📊 Current storage: " +
+                  (storageStore.currentStorage || "unknown")
+              );
+
+              storageStore
+                .switchStorageType("json")
+                .then((result) => {
+                  log("✅ Switch to JSON result: " + JSON.stringify(result));
+
+                  // Test history access after switch
+                  setTimeout(() => {
+                    const historyStore = appWindow.useHistoryStore?.getState();
+                    if (historyStore) {
+                      log("📚 History store accessible: " + !!historyStore);
+                      log(
+                        "📊 Current history count: " +
+                          (historyStore.history?.length || 0)
+                      );
+
+                      // Try to fetch history
+                      historyStore
+                        .fetchHistory()
+                        .then(() => {
+                          log("✅ History fetch successful!");
+                        })
+                        .catch((error) => {
+                          log("❌ History fetch failed: " + error.message);
+                        });
+                    } else {
+                      log("❌ History store not accessible");
+                    }
+                  }, 1000);
+                })
+                .catch((error) => {
+                  log("❌ Switch to JSON failed: " + error.message);
+                });
+            } else {
+              log("❌ Storage store not accessible");
+            }
+          } catch (error) {
+            log(`❌ Error: ${error.message}`);
+          }
+        }, 2000);
+      }
+
+      // Add test history entry
+      function addTestHistory() {
+        log("➕ Adding test history entry...");
+        const appWindow = window.open(
+          "http://localhost:5175",
+          "hoppscotch-app",
+          "width=1200,height=800"
+        );
+
+        setTimeout(() => {
+          try {
+            const historyStore = appWindow.useHistoryStore?.getState();
+
+            if (historyStore) {
+              const testEntry = {
+                id: Date.now().toString(),
+                timestamp: new Date().toISOString(),
+                method: "GET",
+                url: "https://httpbin.org/get",
+                status: 200,
+                responseTime: 123,
+                headers: { "Content-Type": "application/json" },
+                body: null,
+                auth: { authType: "none", authActive: true },
+                requestType: "REST",
+              };
+
+              historyStore
+                .addHistory(testEntry)
+                .then(() => {
+                  log("✅ Test history entry added!");
+                  log(
+                    "📊 New history count: " +
+                      (historyStore.history?.length || 0)
+                  );
+                })
+                .catch((error) => {
+                  log("❌ Failed to add history: " + error.message);
+                });
+            } else {
+              log("❌ History store not accessible");
+            }
+
+            appWindow.close();
+          } catch (error) {
+            log(`❌ Error: ${error.message}`);
+          }
+        }, 2000);
+      }
+
+      // View history status
+      function viewHistoryStatus() {
+        log("👁️ Checking history status...");
+        const appWindow = window.open(
+          "http://localhost:5175",
+          "hoppscotch-app",
+          "width=1200,height=800"
+        );
+
+        setTimeout(() => {
+          try {
+            const storageStore = appWindow.useStorageConfigStore?.getState();
+            const historyStore = appWindow.useHistoryStore?.getState();
+            const authStore = appWindow.useAuthStore?.getState();
+
+            if (storageStore) {
+              log(
+                "📊 Storage Type: " + (storageStore.currentStorage || "unknown")
+              );
+              log(
+                "📊 Storage Available: " +
+                  JSON.stringify(storageStore.availability || {})
+              );
+            }
+
+            if (historyStore) {
+              log("📚 History Count: " + (historyStore.history?.length || 0));
+              log("📚 History Loading: " + (historyStore.loading || false));
+              log("📚 History Error: " + (historyStore.error || "none"));
+            }
+
+            if (authStore) {
+              log(
+                "🔐 Authenticated: " +
+                  (authStore.isValidAuth ? authStore.isValidAuth() : false)
+              );
+            }
+
+            appWindow.close();
+          } catch (error) {
+            log(`❌ Error: ${error.message}`);
+          }
+        }, 2000);
+      }
+
+      // Open main app
+      function openMainApp() {
+        log("🚀 Opening main application...");
+        window.open(
+          "http://localhost:5175",
+          "hoppscotch-app",
+          "width=1200,height=800"
+        );
+      }
+
+      // Initialize
+      log("🚀 History Access Test loaded");
+      log("💡 Click buttons above to test history functionality");
+    </script>
+  </body>
+</html>

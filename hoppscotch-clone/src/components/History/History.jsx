@@ -3,6 +3,7 @@ import { formatDistanceToNow, isToday, isYesterday, subDays } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import "tippy.js/dist/tippy.css";
 import useHistoryStore from "../../store/historyStore";
+import useStorageConfigStore from "../../store/storageConfigStore";
 import { useAuthGuard } from "../Auth/AuthGuard";
 
 // Group history entries by time period
@@ -55,14 +56,26 @@ const History = () => {
   } = useHistoryStore();
 
   const { isAuthenticated, requireAuth } = useAuthGuard();
+  const { currentStorage } = useStorageConfigStore();
   const [expandedGroups, setExpandedGroups] = useState({});
 
-  useEffect(() => {
-    // Only fetch history if authenticated
-    if (isAuthenticated) {
-      fetchHistory();
+  // Helper function to check if authentication is required based on storage type
+  const requiresAuthentication = () => {
+    return currentStorage === "database";
+  };
+
+  // Helper function to check auth only if needed
+  const checkAuthIfRequired = () => {
+    if (requiresAuthentication()) {
+      return requireAuth();
     }
-  }, [fetchHistory, isAuthenticated]);
+    return true; // No auth required for JSON storage
+  };
+
+  useEffect(() => {
+    // Always fetch history - let the history store handle auth requirements internally
+    fetchHistory();
+  }, [fetchHistory]);
 
   // Memoize the grouped history to prevent unnecessary re-renders
   const groupedHistory = useMemo(() => {
@@ -81,8 +94,8 @@ const History = () => {
   }, [history?.length, groupedHistory]);
 
   const handleRestoreRequest = (entry) => {
-    // Check authentication before restoring
-    const authSuccess = requireAuth();
+    // Check authentication only if using database storage
+    const authSuccess = checkAuthIfRequired();
     if (!authSuccess) {
       return;
     }
@@ -93,8 +106,8 @@ const History = () => {
   };
 
   const handleDeleteEntry = async (id) => {
-    // Check authentication before deleting
-    const authSuccess = requireAuth();
+    // Check authentication only if using database storage
+    const authSuccess = checkAuthIfRequired();
     if (!authSuccess) {
       return;
     }
@@ -107,8 +120,8 @@ const History = () => {
   };
 
   const handleToggleStar = async (id) => {
-    // Check authentication before toggling star
-    const authSuccess = requireAuth();
+    // Check authentication only if using database storage
+    const authSuccess = checkAuthIfRequired();
     if (!authSuccess) {
       return;
     }
@@ -121,8 +134,8 @@ const History = () => {
   };
 
   const handleClearAll = async () => {
-    // Check authentication before clearing all
-    const authSuccess = requireAuth();
+    // Check authentication only if using database storage
+    const authSuccess = checkAuthIfRequired();
     if (!authSuccess) {
       return;
     }
@@ -306,7 +319,7 @@ const History = () => {
 
       {/* History Content */}
       <div className="flex-1 overflow-y-auto">
-        {!isAuthenticated ? (
+        {requiresAuthentication() && !isAuthenticated ? (
           <div className="flex flex-col items-center justify-center p-4 h-full min-h-[200px]">
             <div className="w-16 h-16 mb-4 flex items-center justify-center">
               <svg
@@ -345,15 +358,16 @@ const History = () => {
               </svg>
             </div>
             <span className="max-w-sm mt-2 text-center whitespace-normal text-tiny text-secondaryLight">
-              Authentication Required
+              Database Storage Requires Authentication
             </span>
             <p className="text-center text-secondaryLight text-tiny mt-2 max-w-sm">
-              Please login to view and manage your request history
+              Please login to access database storage history or switch to JSON
+              storage for no-login access
             </p>
             <button
               onClick={() => requireAuth()}
               className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-              Login to Access History
+              Login to Access Database History
             </button>
           </div>
         ) : !history || history.length === 0 ? (

@@ -2,6 +2,11 @@
  * JSON Storage Service
  * Handles local JSON file operations for history storage
  * Works in both browser (localStorage) and Electron (file system)
+ *
+ * ✨ NO LOGIN REQUIRED - Works completely offline and independently
+ * 📱 Browser: Uses localStorage (always available)
+ * 🖥️ Electron: Uses local file system
+ * 🔒 Data stays on your device - no server dependency
  */
 
 class JsonStorageService {
@@ -16,6 +21,8 @@ class JsonStorageService {
         this.isElectron ? "Electron" : "Browser"
       } mode)`
     );
+    console.log("✨ JSON Storage: No login required - works offline!");
+    console.log("🔒 Your data stays on your device securely");
   }
 
   // Initialize storage
@@ -27,10 +34,32 @@ class JsonStorageService {
         await this.initializeBrowserStorage();
       }
       console.log("✅ JSON Storage initialized successfully");
+      console.log("🎉 Ready to store history data locally - no login needed!");
       return { success: true };
     } catch (error) {
       console.error("❌ JSON Storage initialization failed:", error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Check if JSON storage is available (always true for browser localStorage)
+  async checkAvailability() {
+    try {
+      if (this.isElectron) {
+        // For Electron, check if we can write to file system
+        return (
+          window.electronAPI !== undefined &&
+          typeof window.electronAPI.getStoragePath === "function"
+        );
+      } else {
+        // For browser, localStorage is always available in modern browsers
+        return (
+          typeof Storage !== "undefined" && window.localStorage !== undefined
+        );
+      }
+    } catch (error) {
+      console.warn("JSON storage availability check failed:", error);
+      return false;
     }
   }
 

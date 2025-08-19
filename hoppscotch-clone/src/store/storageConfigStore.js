@@ -112,17 +112,26 @@ const useStorageConfigStore = create(
         console.log("🔍 Checking storage availability...");
 
         try {
-          // Test JSON storage (always available in browser)
-          const jsonAvailable = !!window.localStorage;
-          console.log("📄 JSON storage available:", jsonAvailable);
+          // JSON storage is always available in modern browsers (no login required)
+          const jsonAvailable =
+            typeof Storage !== "undefined" && window.localStorage !== undefined;
+          console.log(
+            "📄 JSON storage available:",
+            jsonAvailable,
+            "(no login required)"
+          );
 
-          // Test database storage
+          // Test database storage (requires backend connection)
           console.log("🔍 Testing database connection...");
           const dbAvailable = await get().testDatabaseConnection();
-          console.log("🗄️ Database available:", dbAvailable);
+          console.log(
+            "🗄️ Database available:",
+            dbAvailable,
+            "(requires backend server)"
+          );
 
           const availability = {
-            json: jsonAvailable,
+            json: jsonAvailable, // Always true in browser environment
             database: dbAvailable,
             lastChecked: new Date().toISOString(),
           };
@@ -131,15 +140,18 @@ const useStorageConfigStore = create(
           set({ storageAvailability: availability });
 
           console.log("📊 Final storage availability:", availability);
+          console.log("💡 JSON storage works offline without login!");
           return availability;
         } catch (error) {
           console.error("❌ Error checking storage availability:", error);
+          // Even if there's an error, JSON storage should still be available
           const fallback = {
-            json: true, // Fallback to JSON
+            json: true, // JSON is always available as fallback
             database: false,
             lastChecked: new Date().toISOString(),
           };
           set({ storageAvailability: fallback });
+          console.log("🔄 Using fallback availability - JSON storage ready!");
           return fallback;
         }
       },
@@ -150,42 +162,48 @@ const useStorageConfigStore = create(
         console.log("🔧 Initializing storage configuration...");
         console.log("Current storage type:", state.storageType);
 
-        // Check if running in Electron
-        const isElectron = window.electronAPI !== undefined;
-
-        // Test database connection
-        const dbAvailable = await get().testDatabaseConnection();
-        console.log("Database available:", dbAvailable);
-
-        // Set default storage based on environment and availability
+        // Always default to JSON storage (no login required)
+        // This ensures users can start using the app immediately
         if (!state.storageType) {
+          console.log("🎯 Defaulting to JSON storage - no login required!");
+          set({
+            storageType: "json",
+            isFirstTime: false,
+          });
+          set({
+            jsonConfig: {
+              ...state.jsonConfig,
+              enabled: true,
+            },
+          });
+        }
+
+        // Check database availability in background (for future switching)
+        // This doesn't affect JSON storage functionality
+        try {
+          const dbAvailable = await get().testDatabaseConnection();
+          console.log("Database available for switching:", dbAvailable);
+
           if (dbAvailable) {
-            console.log(
-              "✅ Database available, defaulting to database storage"
-            );
-            set({ storageType: "database" });
             set({
+              storageAvailability: {
+                ...get().storageAvailability,
+                database: true,
+              },
               databaseConfig: {
                 ...state.databaseConfig,
-                enabled: true,
                 connected: true,
               },
             });
-          } else {
-            console.log(
-              "📄 Database not available, defaulting to JSON storage"
-            );
-            set({ storageType: "json" });
-            set({
-              jsonConfig: {
-                ...state.jsonConfig,
-                enabled: true,
-              },
-            });
           }
+        } catch (error) {
+          console.log(
+            "Database check failed (JSON storage unaffected):",
+            error.message
+          );
         }
 
-        // Update status
+        // Update status - JSON storage is always ready
         set({
           status: {
             ...state.status,
@@ -196,9 +214,10 @@ const useStorageConfigStore = create(
         });
 
         console.log(
-          "🔧 Storage configuration complete. Type:",
+          "✅ Storage configuration complete. Type:",
           get().storageType
         );
+        console.log("🎉 JSON storage ready - no login required!");
         return { success: true };
       },
 
@@ -272,7 +291,121 @@ const useStorageConfigStore = create(
         }
       },
 
-      // Switch storage type with data migration
+      // Enable JSON-only mode (no login required, works offline)
+      enableJSONOnlyMode: () => {
+        console.log("🎯 Enabling JSON-only mode - no login required!");
+        set({
+          storageType: "json",
+          isFirstTime: false,
+          storageAvailability: {
+            json: true,
+            database: false, // Don't check database in JSON-only mode
+            lastChecked: new Date().toISOString(),
+          },
+          jsonConfig: {
+            ...get().jsonConfig,
+            enabled: true,
+          },
+          databaseConfig: {
+            ...get().databaseConfig,
+            enabled: false,
+            connected: false,
+          },
+          status: {
+            isConfigured: true,
+            currentStorage: "json",
+            lastError: null,
+            isAvailable: true,
+          },
+        });
+        console.log(
+          "✅ JSON-only mode enabled - ready to store history offline!"
+        );
+      },
+
+      // Handle successful authentication and complete database switch
+      handleAuthSuccess: async () => {
+        const { pendingDatabaseSwitch } = get();
+
+        if (pendingDatabaseSwitch) {
+          console.log(
+            "🔐 Authentication successful - completing database switch"
+          );
+
+          // Clear the pending switch flag
+          set({ pendingDatabaseSwitch: false });
+
+          // Now attempt the database switch again
+          const result = await get().switchStorageType("database");
+
+          if (result.success) {
+            console.log(
+              "✅ Successfully switched to database storage after authentication"
+            );
+          } else {
+            console.error(
+              "❌ Failed to switch to database storage after authentication:",
+              result.error
+            );
+          }
+
+          return result;
+        }
+
+        return { success: false, error: "No pending database switch" };
+      },
+
+      // Set pending database switch flag
+      setPendingDatabaseSwitch: () => {
+        console.log("📝 Setting pending database switch flag");
+        set({ pendingDatabaseSwitch: true });
+      },
+
+      // Initialize the store and set up auth listener
+      initialize: () => {
+        const { initializeStorage } = get();
+
+        // Initialize storage configuration
+        initializeStorage();
+
+        // Set up auth state listener for automatic database switching
+        const setupAuthListener = async () => {
+          try {
+            const { default: useAuthStore } = await import(
+              "../store/authStore"
+            );
+
+            // Subscribe to auth store changes
+            useAuthStore.subscribe((state, prevState) => {
+              // Check if authentication just succeeded
+              const wasNotAuthenticated =
+                !prevState.isAuthenticated || !prevState.token;
+              const isNowAuthenticated =
+                state.isAuthenticated && state.token && !state.isTokenExpired();
+
+              if (wasNotAuthenticated && isNowAuthenticated) {
+                console.log(
+                  "🎉 Authentication detected - checking for pending database switch"
+                );
+
+                // Handle the successful authentication
+                get().handleAuthSuccess();
+
+                // Close the auth modal
+                useAuthStore.getState().setAuthModalOpen(false);
+              }
+            });
+
+            console.log("✅ Auth listener set up successfully");
+          } catch (error) {
+            console.error("❌ Failed to set up auth listener:", error);
+          }
+        };
+
+        setupAuthListener();
+      },
+
+      // Switch storage type with authentication check
       switchStorageType: async (newType) => {
         const currentType = get().storageType;
 
@@ -283,8 +416,48 @@ const useStorageConfigStore = create(
 
         console.log(`🔄 Switching storage from ${currentType} to ${newType}`);
 
+        // If switching to database storage, check authentication
+        if (newType === "database") {
+          console.log("🔐 Database storage requires authentication");
+
+          // Import auth store dynamically to avoid circular dependency
+          try {
+            const { default: useAuthStore } = await import(
+              "../store/authStore"
+            );
+            const authState = useAuthStore.getState();
+
+            // Check if user is already authenticated
+            if (!authState.isValidAuth()) {
+              console.log("❌ Not authenticated - showing login modal");
+
+              // Store pending switch for after authentication
+              get().setPendingDatabaseSwitch();
+
+              // Show auth modal
+              authState.setAuthModalOpen(true);
+
+              return {
+                success: false,
+                error: "Authentication required for database storage",
+                requiresAuth: true,
+              };
+            }
+
+            console.log(
+              "✅ User is authenticated - proceeding with database storage"
+            );
+          } catch (error) {
+            console.error("❌ Failed to check authentication:", error);
+            return {
+              success: false,
+              error: "Authentication check failed",
+            };
+          }
+        }
+
         try {
-          // Update configuration first
+          // Update configuration
           set({ storageType: newType });
 
           if (newType === "database") {

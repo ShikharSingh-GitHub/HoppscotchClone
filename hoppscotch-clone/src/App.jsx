@@ -20,12 +20,24 @@ import { demonstrateAuthMethods } from "./utils/authTesting";
 
 function App() {
   const { initializeStorage } = useHistoryStore();
-  const { checkAvailability } = useStorageConfigStore();
+  const { checkAvailability, initialize: initializeStorageConfig } =
+    useStorageConfigStore();
 
   // Expose stores to window for debugging
   useEffect(() => {
     window.useStorageConfigStore = useStorageConfigStore;
+
+    // Add helper function to enable JSON-only mode
+    window.enableJSONOnlyMode = () => {
+      const storageConfig = useStorageConfigStore.getState();
+      storageConfig.enableJSONOnlyMode();
+      console.log("🎉 JSON-only mode enabled via window helper!");
+    };
+
     console.log("🔧 Storage config store exposed to window for debugging");
+    console.log(
+      "💡 To enable JSON-only mode, run: window.enableJSONOnlyMode()"
+    );
   }, []);
 
   // Initialize storage and authentication on app load
@@ -36,6 +48,9 @@ function App() {
 
         // Check storage availability first
         await checkAvailability();
+
+        // Initialize storage configuration (includes auth listener setup)
+        initializeStorageConfig();
 
         // Initialize storage system
         await initializeStorage();
@@ -62,7 +77,7 @@ function App() {
       // Optionally run the demonstration automatically
       // demonstrateAuthMethods();
     }, 1000);
-  }, [initializeStorage, checkAvailability]);
+  }, [initializeStorage, checkAvailability, initializeStorageConfig]);
 
   return (
     <Router>

@@ -1,16 +1,73 @@
 # 🌐 **BROWSER TESTING GUIDE - JSON Storage Functionality**
 
+## 🎯 **Quick Start - No Login Required!**
+
+JSON Storage works completely offline without any login or authentication. Perfect for:
+
+- ✅ **No Backend Required** - Works without database server
+- ✅ **No Login/Registration** - Start using immediately
+- ✅ **Offline Usage** - Store requests locally on your device
+- ✅ **Privacy First** - Your data never leaves your device
+
+### **⚡ Instant Test (30 seconds)**
+
+1. **Open http://localhost:5174**
+2. **Open Developer Console** (F12)
+3. **Run this command:**
+   ```javascript
+   // Enable JSON-only mode (no login required)
+   window.enableJSONOnlyMode && window.enableJSONOnlyMode();
+   ```
+4. **Make a test request** - your history will be stored locally!
+
+---
+
 ## 🚀 **Getting Started**
 
 ### **1. Open Your Browser**
 
-- Navigate to: **http://localhost:5173**
+- Navigate to: **http://localhost:5174**
 - Open **Developer Tools** (F12 or Cmd+Option+I on Mac)
 - Go to the **Console** tab to see debug messages
 
 ---
 
 ## 🧪 **Testing Scenarios**
+
+### **Scenario 0: JSON Storage Without Login (PRIORITY TEST)**
+
+#### **What to Test:**
+
+- JSON storage works immediately without any authentication
+- History is stored locally on device
+- No backend server dependency
+
+#### **Steps:**
+
+1. **Open http://localhost:5174**
+2. **In Console, run:**
+   ```javascript
+   // Force JSON-only mode
+   window.enableJSONOnlyMode();
+   ```
+3. **Make a few test requests:**
+   - GET to https://jsonplaceholder.typicode.com/posts/1
+   - POST to https://httpbin.org/post with some JSON data
+4. **Check history is saved:**
+   ```javascript
+   // Check if history is stored locally
+   console.log(JSON.parse(localStorage.getItem("hoppscotch-history") || "[]"));
+   ```
+
+#### **Expected Results:**
+
+- ✅ JSON storage initializes immediately
+- ✅ Requests are saved to localStorage
+- ✅ No login prompts or authentication required
+- ✅ History persists across browser refreshes
+- ✅ Console shows "No login required - works offline!"
+
+---
 
 ### **Scenario 1: Initial Storage Setup**
 
