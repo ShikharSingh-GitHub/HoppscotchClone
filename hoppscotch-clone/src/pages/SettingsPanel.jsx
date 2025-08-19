@@ -2,12 +2,20 @@ import {
   Check,
   ChevronDown,
   Cloud,
+  Database,
+  Download,
+  FileText,
   Globe,
+  HardDrive,
   Monitor,
   Moon,
+  RefreshCw,
   Sun,
+  Upload,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import StoragePreferenceModal from "../components/Modal/StoragePreferenceModal";
+import useStorageConfigStore from "../store/storageConfigStore";
 
 const SettingsPanel = () => {
   const [selectedQuery, setSelectedQuery] = useState("Enable");
@@ -20,6 +28,33 @@ const SettingsPanel = () => {
   );
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [isNamingStyleOpen, setIsNamingStyleOpen] = useState(false);
+  const [showStorageModal, setShowStorageModal] = useState(false);
+
+  // Debug modal state
+  useEffect(() => {
+    console.log("SettingsPanel - showStorageModal:", showStorageModal);
+  }, [showStorageModal]);
+
+  // Storage configuration
+  const {
+    storageType,
+    storageAvailability,
+    setStorageType,
+    checkAvailability,
+    testDatabaseConnection,
+    switchStorageType,
+  } = useStorageConfigStore();
+
+  // Debug logging
+  useEffect(() => {
+    console.log("SettingsPanel - Current storage type:", storageType);
+    console.log("SettingsPanel - Storage availability:", storageAvailability);
+  }, [storageType, storageAvailability]);
+
+  useEffect(() => {
+    // Check storage availability on component mount
+    checkAvailability();
+  }, [checkAvailability]);
 
   const languages = [
     "English",
@@ -542,7 +577,150 @@ const SettingsPanel = () => {
             </div>
           </div>
         </div>
+
+        {/* Storage Section */}
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+          <div className="md:col-span-1">
+            <h1 className="text-lg font-semibold mb-2 text-white">Storage</h1>
+            <p className="text-zinc-400 text-xs">
+              Configure how your history data is stored and managed.
+            </p>
+          </div>
+
+          <div className="md:col-span-2 space-y-8">
+            {/* Current Storage Type */}
+            <div>
+              <h2 className="text-sm font-semibold mb-3 text-white">
+                Current Storage Type
+              </h2>
+              <p className="text-zinc-400 mb-4 text-xs">
+                Choose between database storage or local JSON files for your
+                request history.
+              </p>
+
+              <div className="flex items-center gap-4 mb-4">
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                    storageType === "database"
+                      ? "border-btn bg-btn/10 text-btn"
+                      : "border-zinc-700 text-zinc-400"
+                  }`}>
+                  <Database size={16} />
+                  <span className="text-xs font-medium">Database</span>
+                  {storageAvailability?.database && (
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  )}
+                </div>
+
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                    storageType === "json"
+                      ? "border-btn bg-btn/10 text-btn"
+                      : "border-zinc-700 text-zinc-400"
+                  }`}>
+                  <FileText size={16} />
+                  <span className="text-xs font-medium">Local JSON</span>
+                  {storageAvailability?.json && (
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  console.log("Change Storage Type button clicked");
+                  setShowStorageModal(true);
+                }}
+                className="flex items-center gap-2 bg-btn hover:bg-btn-hover text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors">
+                <RefreshCw size={14} />
+                Change Storage Type
+              </button>
+            </div>
+
+            {/* Storage Actions */}
+            <div>
+              <h2 className="text-sm font-semibold mb-3 text-white">
+                Data Management
+              </h2>
+              <p className="text-zinc-400 mb-4 text-xs">
+                Import, export, and manage your request history data.
+              </p>
+
+              <div className="flex gap-3">
+                <button className="flex items-center gap-2 border border-zinc-700 px-4 py-2 rounded text-xs text-zinc-300 hover:text-white hover:bg-search-bg-hover transition-colors font-medium">
+                  <Download size={14} />
+                  Export History
+                </button>
+
+                <button className="flex items-center gap-2 border border-zinc-700 px-4 py-2 rounded text-xs text-zinc-300 hover:text-white hover:bg-search-bg-hover transition-colors font-medium">
+                  <Upload size={14} />
+                  Import History
+                </button>
+
+                <button className="flex items-center gap-2 border border-zinc-700 px-4 py-2 rounded text-xs text-zinc-300 hover:text-white hover:bg-search-bg-hover transition-colors font-medium">
+                  <HardDrive size={14} />
+                  Storage Info
+                </button>
+              </div>
+            </div>
+
+            {/* Storage Status */}
+            <div>
+              <h2 className="text-sm font-semibold mb-3 text-white">
+                Storage Status
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-search-bg border border-zinc-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-zinc-400">Database</span>
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        storageAvailability?.database
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                  </div>
+                  <p className="text-xs text-white font-medium">
+                    {storageAvailability?.database
+                      ? "Connected"
+                      : "Unavailable"}
+                  </p>
+                </div>
+
+                <div className="bg-search-bg border border-zinc-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-zinc-400">Local JSON</span>
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        storageAvailability?.json
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                  </div>
+                  <p className="text-xs text-white font-medium">
+                    {storageAvailability?.json ? "Available" : "Unavailable"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Storage Preference Modal */}
+      {showStorageModal && (
+        <StoragePreferenceModal
+          isOpen={showStorageModal}
+          onClose={() => setShowStorageModal(false)}
+          onStorageSelected={(selectedType) => {
+            console.log("Storage selected in modal:", selectedType);
+            // The modal already handles the storage switching internally
+            setShowStorageModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -14,12 +14,41 @@ import GraphQLPanel from "./pages/GraphQLPanel";
 import RealTimePanel from "./pages/RealTimePanel";
 import RestPanel from "./pages/RestPanel";
 import SettingsPanel from "./pages/SettingsPanel";
+import useHistoryStore from "./store/historyStore";
+import useStorageConfigStore from "./store/storageConfigStore";
 import { demonstrateAuthMethods } from "./utils/authTesting";
 
 function App() {
-  // Demonstrate auth methods when app loads (for development/testing)
+  const { initializeStorage } = useHistoryStore();
+  const { checkAvailability } = useStorageConfigStore();
+
+  // Expose stores to window for debugging
   useEffect(() => {
-    // Run auth demonstration in console
+    window.useStorageConfigStore = useStorageConfigStore;
+    console.log("🔧 Storage config store exposed to window for debugging");
+  }, []);
+
+  // Initialize storage and authentication on app load
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        console.log("🚀 Initializing Hoppscotch Clone...");
+
+        // Check storage availability first
+        await checkAvailability();
+
+        // Initialize storage system
+        await initializeStorage();
+
+        console.log("✅ App initialization complete!");
+      } catch (error) {
+        console.error("❌ App initialization failed:", error);
+      }
+    };
+
+    initializeApp();
+
+    // Demonstrate auth methods when app loads (for development/testing)
     setTimeout(() => {
       console.log("🎯 Hoppscotch Clone - Authentication System Loaded!");
       console.log("📚 Available authentication methods:");
@@ -33,7 +62,7 @@ function App() {
       // Optionally run the demonstration automatically
       // demonstrateAuthMethods();
     }, 1000);
-  }, []);
+  }, [initializeStorage, checkAvailability]);
 
   return (
     <Router>
