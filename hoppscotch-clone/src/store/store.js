@@ -1,17 +1,29 @@
 import { create } from "zustand";
 
-const useRequestStore = create((set) => ({
+const useRequestStoreBase = create((set, get) => ({
   isRequested: false,
   activeRequest: {
     method: "GET",
     url: "",
     headers: {},
     body: null,
+    auth: { authType: "none", authActive: true }, // Add auth field
   },
   responseData: null, // Add response data storage
+
+  // Getters
+  currentRequest: () => get().activeRequest,
+
+  // Actions
   requested: () => set({ isRequested: true }), // Always set to true when request is made
   setActiveRequest: (request) => set({ activeRequest: request }),
   setResponseData: (response) => set({ responseData: response }), // Add response setter
+
+  // Update request (partial updates)
+  updateRequest: (updates) =>
+    set((state) => ({
+      activeRequest: { ...state.activeRequest, ...updates },
+    })),
 
   restoreFromHistory: (historyEntry) => {
     try {
@@ -27,6 +39,7 @@ const useRequestStore = create((set) => ({
         url: historyEntry.url || "",
         headers: parsedHeaders,
         body: historyEntry.body || null,
+        auth: historyEntry.auth || { authType: "none", authActive: true }, // Include auth in restoration
       };
 
       // Update the active request
@@ -44,4 +57,13 @@ const useRequestStore = create((set) => ({
   },
 }));
 
-export default useRequestStore;
+// Export named hooks for easier use
+export const useRequestStore = () => {
+  const store = useRequestStoreBase();
+  return {
+    ...store,
+    currentRequest: store.activeRequest,
+  };
+};
+
+export default useRequestStoreBase;

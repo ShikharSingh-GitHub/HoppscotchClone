@@ -1,13 +1,4 @@
-import { closeBrackets } from "@codemirror/autocomplete";
-import { defaultKeymap } from "@codemirror/commands";
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
-import { bracketMatching, foldGutter } from "@codemirror/language";
-import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { oneDark } from "@codemirror/theme-one-dark";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import Tippy from "@tippyjs/react";
-import { createTheme } from "@uiw/codemirror-themes";
 import CodeMirror from "@uiw/react-codemirror";
 import { graphql } from "cm6-graphql";
 import {
@@ -29,6 +20,20 @@ import KeyboardShortcuts from "../components/KeyboardShortcuts/KeyboardShortcuts
 import QueryParameterComponent from "../components/LeftPanel/QueryParameter";
 import GraphQLRightPanel from "../components/RightPanel/GraphQLRightPanel";
 import useRequestStore from "../store/store";
+import {
+  bracketMatching,
+  closeBrackets,
+  defaultKeymap,
+  EditorView,
+  foldGutter,
+  highlightSelectionMatches,
+  hoppscotchTheme,
+  javascriptExtensions,
+  jsonExtensions,
+  keymap,
+  lineNumbers,
+  searchKeymap,
+} from "../utils/codeMirrorConfig";
 
 function GraphQLPanel() {
   const [leftWidth, setLeftWidth] = useState(70);
@@ -165,44 +170,7 @@ function GraphQLPanel() {
   "id": "1"
 }`);
 
-  const myTheme = createTheme({
-    theme: "dark",
-    settings: {
-      background: "#181818",
-      backgroundImage: "",
-      foreground: "#ffffff",
-      caret: "#ffffff",
-      selection: "#264f78",
-      selectionMatch: "#264f78",
-      lineHighlight: "#2a2a2a",
-      gutterBackground: "#1e1e1e",
-      gutterForeground: "#858585",
-      gutterBorder: "#2a2a2a",
-    },
-    styles: [
-      { tag: "keyword", color: "#C586C0" },
-      { tag: "name", color: "#9CDCFE" },
-      { tag: "typeName", color: "#4EC9B0" },
-      { tag: "fieldName", color: "#9CDCFE" },
-      { tag: "argumentName", color: "#9CDCFE" },
-      { tag: "variableName", color: "#4FC1FF" },
-      { tag: "directiveName", color: "#DCDCAA" },
-      { tag: "string", color: "#CE9178" },
-      { tag: "number", color: "#B5CEA8" },
-      { tag: "boolean", color: "#569CD6" },
-      { tag: "null", color: "#569CD6" },
-      { tag: "comment", color: "#6A9955" },
-      { tag: "propertyName", color: "#9CDCFE" },
-      { tag: "operator", color: "#D4D4D4" },
-      { tag: "punctuation", color: "#D4D4D4" },
-      { tag: "bracket", color: "#FFD700" },
-      { tag: "brace", color: "#DA70D6" },
-      { tag: "angleBracket", color: "#DA70D6" },
-      { tag: "definition", color: "#DCDCAA" },
-      { tag: "quote", color: "#CE9178" },
-    ],
-  });
-
+  // Create GraphQL extensions with additional styling
   const graphqlExtensions = [
     graphql(),
     lineNumbers(),
@@ -214,34 +182,8 @@ function GraphQLPanel() {
     EditorView.theme({
       "&": { fontSize: "12px" },
       ".cm-content": { padding: "12px", minHeight: "250px" },
-      ".cm-editor": { borderRadius: "0px" },
-      ".cm-focused": { outline: "none" },
-      ".cm-gutters": {
-        backgroundColor: "#1e1e1e",
-        borderRight: "1px solid #2a2a2a",
-      },
-      ".cm-lineNumbers": { color: "#858585", fontSize: "10px" },
-      ".cm-activeLine": { backgroundColor: "#2a2a2a" },
-      ".cm-selectionBackground": { backgroundColor: "#264f78 !important" },
       ".cm-keyword": { color: "#C586C0 !important", fontWeight: "bold" },
-      ".cm-string": { color: "#CE9178 !important" },
-      ".cm-number": { color: "#B5CEA8 !important" },
       ".cm-variableName": { color: "#4FC1FF !important" },
-      ".cm-comment": { color: "#6A9955 !important", fontStyle: "italic" },
-    }),
-  ];
-
-  const jsonExtensions = [
-    json(),
-    lineNumbers(),
-    foldGutter(),
-    bracketMatching(),
-    closeBrackets(),
-    highlightSelectionMatches(),
-    keymap.of([...defaultKeymap, ...searchKeymap]),
-    EditorView.theme({
-      "&": { fontSize: "12px" },
-      ".cm-content": { padding: "12px", minHeight: "150px" },
       ".cm-editor": { borderRadius: "0px" },
       ".cm-focused": { outline: "none" },
       ".cm-gutters": {
@@ -250,13 +192,6 @@ function GraphQLPanel() {
       },
       ".cm-lineNumbers": { color: "#858585", fontSize: "10px" },
       ".cm-activeLine": { backgroundColor: "#2a2a2a" },
-      ".cm-selectionBackground": { backgroundColor: "#264f78 !important" },
-      ".cm-property": { color: "#9CDCFE !important" },
-      ".cm-string": { color: "#CE9178 !important" },
-      ".cm-number": { color: "#B5CEA8 !important" },
-      ".cm-keyword": { color: "#569CD6 !important" },
-      ".cm-punctuation": { color: "#D4D4D4 !important" },
-      ".cm-bracket": { color: "#FFD700 !important" },
     }),
   ];
 
@@ -566,7 +501,7 @@ function GraphQLPanel() {
                   <CodeMirror
                     value={queryContent}
                     onChange={(value) => setQueryContent(value)}
-                    theme={myTheme}
+                    theme={hoppscotchTheme}
                     extensions={graphqlExtensions}
                     placeholder="Enter your GraphQL query here..."
                   />
@@ -694,7 +629,7 @@ function GraphQLPanel() {
                   <CodeMirror
                     value={variablesContent}
                     onChange={(value) => setVariablesContent(value)}
-                    theme={myTheme}
+                    theme={hoppscotchTheme}
                     extensions={jsonExtensions}
                     placeholder="Enter your GraphQL variables as JSON..."
                   />

@@ -97,6 +97,37 @@ body {
   color: #f3f4f6;
 }
 
+/* Popover theme for dropdowns */
+.tippy-box[data-theme~="popover"] {
+  background-color: #374151; /* Darker background for popover */
+  color: #f9fafb;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #4b5563;
+}
+
+.tippy-box[data-theme~="popover"] .tippy-arrow {
+  color: #374151;
+}
+
+/* Custom dropdown button styles */
+.auth-dropdown-button {
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.auth-dropdown-button:hover {
+  background-color: #4b5563;
+  color: #f9fafb;
+}
+
+.auth-dropdown-button:focus-visible {
+  background-color: #4b5563;
+  color: #f9fafb;
+}
+
 .tippy-arrow {
   color: #1f2937;
 }

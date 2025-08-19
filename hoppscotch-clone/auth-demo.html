@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basic Auth & OAuth 2.0 Demo</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .container {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+      }
+
+      .demo-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 25px;
+        border-left: 5px solid #007bff;
+      }
+
+      .demo-section h2 {
+        color: #007bff;
+        margin-top: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #007bff;
+      }
+
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: background-color 0.3s;
+        margin-right: 10px;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      .result {
+        background: #fff;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        padding: 15px;
+        margin-top: 15px;
+        font-family: "Courier New", monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .success {
+        border-color: #28a745;
+        background: #d4edda;
+      }
+
+      .error {
+        border-color: #dc3545;
+        background: #f8d7da;
+      }
+
+      .header-display {
+        background: #e7f3ff;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 10px 0;
+        font-family: monospace;
+        font-size: 14px;
+      }
+
+      .emoji {
+        font-size: 1.5em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 768px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .status-green {
+        background: #28a745;
+      }
+      .status-red {
+        background: #dc3545;
+      }
+      .status-gray {
+        background: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔐 Authentication Demo</h1>
+      <p style="text-align: center; color: #666; font-size: 1.1em">
+        Live demonstration of Basic Auth and OAuth 2.0 functionality
+      </p>
+
+      <div class="grid">
+        <!-- Basic Auth Section -->
+        <div class="demo-section">
+          <h2><span class="emoji">🔑</span> Basic Authentication</h2>
+          <div class="form-group">
+            <label for="basicUsername">Username:</label>
+            <input
+              type="text"
+              id="basicUsername"
+              value="testuser"
+              placeholder="Enter username" />
+          </div>
+          <div class="form-group">
+            <label for="basicPassword">Password:</label>
+            <input
+              type="password"
+              id="basicPassword"
+              value="testpass123"
+              placeholder="Enter password" />
+          </div>
+          <button onclick="testBasicAuth()">🧪 Test Basic Auth</button>
+          <button onclick="showBasicHeaders()">👁️ Show Headers</button>
+
+          <div
+            id="basicHeaders"
+            class="header-display"
+            style="display: none"></div>
+          <div id="basicResult" class="result" style="display: none"></div>
+        </div>
+
+        <!-- OAuth 2.0 Section -->
+        <div class="demo-section">
+          <h2><span class="emoji">🚀</span> OAuth 2.0</h2>
+          <div class="form-group">
+            <label for="oauth2GrantType">Grant Type:</label>
+            <select id="oauth2GrantType" onchange="updateOAuth2Form()">
+              <option value="authorization_code">Authorization Code</option>
+              <option value="client_credentials">Client Credentials</option>
+              <option value="implicit">Implicit</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="oauth2Token">Access Token:</label>
+            <input
+              type="text"
+              id="oauth2Token"
+              value="oauth2_demo_token_abc123"
+              placeholder="Enter access token" />
+          </div>
+          <div id="oauth2ExtraFields">
+            <!-- Dynamic fields based on grant type -->
+          </div>
+          <button onclick="testOAuth2()">🧪 Test OAuth 2.0</button>
+          <button onclick="showOAuth2Headers()">👁️ Show Headers</button>
+          <button onclick="generateMockToken()">🎲 Generate Mock Token</button>
+
+          <div
+            id="oauth2Headers"
+            class="header-display"
+            style="display: none"></div>
+          <div id="oauth2Result" class="result" style="display: none"></div>
+        </div>
+      </div>
+
+      <!-- Server Status -->
+      <div class="demo-section" style="margin-top: 30px">
+        <h2><span class="emoji">🖥️</span> Server Status</h2>
+        <p>
+          <span id="serverStatus" class="status-indicator status-gray"></span>
+          <span id="serverStatusText">Checking server...</span>
+        </p>
+        <button onclick="checkServerHealth()">🔄 Check Server</button>
+        <button onclick="testNoAuth()">🚫 Test No Auth</button>
+
+        <div id="serverResult" class="result" style="display: none"></div>
+      </div>
+
+      <!-- Results Summary -->
+      <div class="demo-section" style="margin-top: 30px">
+        <h2><span class="emoji">📊</span> Test Results Summary</h2>
+        <div id="resultsSummary">
+          <p>Run tests to see results summary...</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const SERVER_URL = "http://localhost:3001/api/test-auth";
+      const HEALTH_URL = "http://localhost:3001/api/health";
+
+      let testResults = {
+        basic: null,
+        oauth2: null,
+        noAuth: null,
+        server: null,
+      };
+
+      // Generate Authorization headers (simplified version)
+      function generateBasicAuthHeader(username, password) {
+        const credentials = btoa(`${username}:${password}`);
+        return `Basic ${credentials}`;
+      }
+
+      function generateBearerHeader(token) {
+        return `Bearer ${token}`;
+      }
+
+      // Update OAuth 2.0 form based on grant type
+      function updateOAuth2Form() {
+        const grantType = document.getElementById("oauth2GrantType").value;
+        const extraFields = document.getElementById("oauth2ExtraFields");
+
+        let fieldsHtml = "";
+        switch (grantType) {
+          case "authorization_code":
+            fieldsHtml = `
+                        <div class="form-group">
+                            <label>Authorization URL:</label>
+                            <input type="url" id="authUrl" value="https://oauth.example.com/auth" placeholder="Authorization URL">
+                        </div>
+                        <div class="form-group">
+                            <label>Client ID:</label>
+                            <input type="text" id="clientId" value="demo_client_id_12345" placeholder="Client ID">
+                        </div>
+                    `;
+            break;
+          case "client_credentials":
+            fieldsHtml = `
+                        <div class="form-group">
+                            <label>Client ID:</label>
+                            <input type="text" id="clientId" value="client_cred_id" placeholder="Client ID">
+                        </div>
+                        <div class="form-group">
+                            <label>Client Secret:</label>
+                            <input type="password" id="clientSecret" value="client_cred_secret" placeholder="Client Secret">
+                        </div>
+                    `;
+            break;
+          case "implicit":
+            fieldsHtml = `
+                        <div class="form-group">
+                            <label>Client ID:</label>
+                            <input type="text" id="clientId" value="implicit_client_id" placeholder="Client ID">
+                        </div>
+                        <div class="form-group">
+                            <label>Redirect URI:</label>
+                            <input type="url" id="redirectUri" value="http://localhost:3001/oauth/callback" placeholder="Redirect URI">
+                        </div>
+                    `;
+            break;
+        }
+        extraFields.innerHTML = fieldsHtml;
+      }
+
+      // Generate mock token
+      function generateMockToken() {
+        const grantType = document.getElementById("oauth2GrantType").value;
+        const randomId = Math.random().toString(36).substring(2, 15);
+        const mockToken = `mock_${grantType}_token_${randomId}`;
+        document.getElementById("oauth2Token").value = mockToken;
+      }
+
+      // Show Basic Auth headers
+      function showBasicHeaders() {
+        const username = document.getElementById("basicUsername").value;
+        const password = document.getElementById("basicPassword").value;
+
+        if (!username) {
+          alert("Please enter a username");
+          return;
+        }
+
+        const authHeader = generateBasicAuthHeader(username, password);
+        const headersDiv = document.getElementById("basicHeaders");
+
+        headersDiv.innerHTML = `
+                <strong>Authorization Header:</strong><br>
+                Authorization: ${authHeader}<br><br>
+                <strong>Decoded Credentials:</strong><br>
+                ${atob(authHeader.split(" ")[1])}
+            `;
+        headersDiv.style.display = "block";
+      }
+
+      // Show OAuth 2.0 headers
+      function showOAuth2Headers() {
+        const token = document.getElementById("oauth2Token").value;
+
+        if (!token) {
+          alert("Please enter an access token");
+          return;
+        }
+
+        const authHeader = generateBearerHeader(token);
+        const headersDiv = document.getElementById("oauth2Headers");
+
+        headersDiv.innerHTML = `
+                <strong>Authorization Header:</strong><br>
+                Authorization: ${authHeader}<br><br>
+                <strong>Grant Type:</strong> ${
+                  document.getElementById("oauth2GrantType").value
+                }
+            `;
+        headersDiv.style.display = "block";
+      }
+
+      // Test Basic Auth
+      async function testBasicAuth() {
+        const username = document.getElementById("basicUsername").value;
+        const password = document.getElementById("basicPassword").value;
+        const resultDiv = document.getElementById("basicResult");
+
+        if (!username) {
+          alert("Please enter a username");
+          return;
+        }
+
+        const authHeader = generateBasicAuthHeader(username, password);
+
+        try {
+          resultDiv.style.display = "block";
+          resultDiv.innerHTML = "Testing Basic Auth...";
+          resultDiv.className = "result";
+
+          const response = await fetch(SERVER_URL, {
+            method: "GET",
+            headers: {
+              Authorization: authHeader,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            resultDiv.className = "result success";
+            testResults.basic = "success";
+          } else {
+            resultDiv.className = "result error";
+            testResults.basic = "error";
+          }
+
+          resultDiv.innerHTML = `
+🔐 Basic Auth Test Result:
+${JSON.stringify(result, null, 2)}
+
+📡 Request Headers:
+Authorization: ${authHeader}
+                `;
+        } catch (error) {
+          resultDiv.className = "result error";
+          resultDiv.innerHTML = `❌ Error: ${error.message}`;
+          testResults.basic = "error";
+        }
+
+        updateResultsSummary();
+      }
+
+      // Test OAuth 2.0
+      async function testOAuth2() {
+        const token = document.getElementById("oauth2Token").value;
+        const grantType = document.getElementById("oauth2GrantType").value;
+        const resultDiv = document.getElementById("oauth2Result");
+
+        if (!token) {
+          alert("Please enter an access token");
+          return;
+        }
+
+        const authHeader = generateBearerHeader(token);
+
+        try {
+          resultDiv.style.display = "block";
+          resultDiv.innerHTML = "Testing OAuth 2.0...";
+          resultDiv.className = "result";
+
+          const response = await fetch(SERVER_URL, {
+            method: "GET",
+            headers: {
+              Authorization: authHeader,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            resultDiv.className = "result success";
+            testResults.oauth2 = "success";
+          } else {
+            resultDiv.className = "result error";
+            testResults.oauth2 = "error";
+          }
+
+          resultDiv.innerHTML = `
+🚀 OAuth 2.0 Test Result:
+${JSON.stringify(result, null, 2)}
+
+📡 Request Headers:
+Authorization: ${authHeader}
+
+🔧 Grant Type: ${grantType}
+                `;
+        } catch (error) {
+          resultDiv.className = "result error";
+          resultDiv.innerHTML = `❌ Error: ${error.message}`;
+          testResults.oauth2 = "error";
+        }
+
+        updateResultsSummary();
+      }
+
+      // Test No Auth
+      async function testNoAuth() {
+        const resultDiv = document.getElementById("serverResult");
+
+        try {
+          resultDiv.style.display = "block";
+          resultDiv.innerHTML = "Testing No Authentication...";
+          resultDiv.className = "result";
+
+          const response = await fetch(SERVER_URL, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          const result = await response.json();
+
+          resultDiv.className = "result";
+          testResults.noAuth =
+            result.authType === "None" ? "expected" : "unexpected";
+
+          resultDiv.innerHTML = `
+🚫 No Auth Test Result:
+${JSON.stringify(result, null, 2)}
+
+📡 Request Headers:
+(No Authorization header sent)
+                `;
+        } catch (error) {
+          resultDiv.className = "result error";
+          resultDiv.innerHTML = `❌ Error: ${error.message}`;
+          testResults.noAuth = "error";
+        }
+
+        updateResultsSummary();
+      }
+
+      // Check server health
+      async function checkServerHealth() {
+        const statusIndicator = document.getElementById("serverStatus");
+        const statusText = document.getElementById("serverStatusText");
+
+        try {
+          statusText.textContent = "Checking server...";
+          statusIndicator.className = "status-indicator status-gray";
+
+          const response = await fetch(HEALTH_URL);
+          const result = await response.json();
+
+          if (result.status === "ok") {
+            statusIndicator.className = "status-indicator status-green";
+            statusText.textContent = "Server is running ✅";
+            testResults.server = "online";
+          } else {
+            statusIndicator.className = "status-indicator status-red";
+            statusText.textContent = "Server issues detected ⚠️";
+            testResults.server = "issues";
+          }
+        } catch (error) {
+          statusIndicator.className = "status-indicator status-red";
+          statusText.textContent = "Server offline or unreachable ❌";
+          testResults.server = "offline";
+        }
+
+        updateResultsSummary();
+      }
+
+      // Update results summary
+      function updateResultsSummary() {
+        const summaryDiv = document.getElementById("resultsSummary");
+        let summary = "<h3>Test Status:</h3><ul>";
+
+        const statusIcon = (status) => {
+          switch (status) {
+            case "success":
+              return "✅";
+            case "expected":
+              return "✅";
+            case "online":
+              return "✅";
+            case "error":
+              return "❌";
+            case "offline":
+              return "❌";
+            case "issues":
+              return "⚠️";
+            default:
+              return "⏳";
+          }
+        };
+
+        summary += `<li>${statusIcon(testResults.basic)} Basic Auth: ${
+          testResults.basic || "Not tested"
+        }</li>`;
+        summary += `<li>${statusIcon(testResults.oauth2)} OAuth 2.0: ${
+          testResults.oauth2 || "Not tested"
+        }</li>`;
+        summary += `<li>${statusIcon(testResults.noAuth)} No Auth: ${
+          testResults.noAuth || "Not tested"
+        }</li>`;
+        summary += `<li>${statusIcon(testResults.server)} Server: ${
+          testResults.server || "Not checked"
+        }</li>`;
+        summary += "</ul>";
+
+        summaryDiv.innerHTML = summary;
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", function () {
+        updateOAuth2Form();
+        checkServerHealth();
+      });
+    </script>
+  </body>
+</html>

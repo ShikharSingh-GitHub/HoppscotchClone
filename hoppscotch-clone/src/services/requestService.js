@@ -1,5 +1,6 @@
 import axios from "axios";
 import useAuthStore from "../store/authStore";
+import { applyAuthToRequest } from "./requestAuthService";
 
 /**
  * Makes an HTTP request using the provided request data
@@ -8,34 +9,42 @@ import useAuthStore from "../store/authStore";
  */
 export const makeApiRequest = async (requestData) => {
   try {
-    const { method, url, headers = {}, body = null } = requestData;
+    const { method, url, headers = {}, body = null, auth = null } = requestData;
 
     if (!url) {
       console.error("No URL provided for request");
       throw new Error("URL is required");
     }
 
-    // Get authentication header if available
-    const authHeader = useAuthStore.getState().getAuthHeader();
+    // Apply request-level authorization (Basic Auth, OAuth, etc.)
+    let authorizedRequest = { method, url, headers, body };
+    if (auth) {
+      authorizedRequest = applyAuthToRequest(authorizedRequest, auth);
+      console.log("🔐 Applied request authorization:", auth.authType);
+    }
 
-    // Merge headers with authentication
-    const requestHeaders = { ...headers };
-    if (authHeader) {
-      requestHeaders["Authorization"] = authHeader;
-      console.log("🔐 Added authentication header");
+    // Get app-level authentication header if available
+    const appAuthHeader = useAuthStore.getState().getAuthHeader();
+
+    // Merge headers with app authentication (this is for app-level auth, not request auth)
+    const requestHeaders = { ...authorizedRequest.headers };
+    if (appAuthHeader) {
+      requestHeaders["Authorization"] = appAuthHeader;
+      console.log("🔐 Added app-level authentication header");
     }
 
     // Process the body based on Content-Type
-    let processedBody = body;
+    let processedBody = authorizedRequest.body;
     const contentType =
       requestHeaders["Content-Type"] || requestHeaders["content-type"];
 
-    console.log(`🌐 Making ${method} request to ${url}`);
+    console.log(`🌐 Making ${method} request to ${authorizedRequest.url}`);
     console.log("📤 Request config:");
     console.log("  - Headers:", requestHeaders);
     console.log("  - Body:", body);
     console.log("  - Content-Type:", contentType);
-    console.log("  - Authenticated:", !!authHeader);
+    console.log("  - Request Auth:", auth?.authType || "none");
+    console.log("  - App Authenticated:", !!appAuthHeader);
 
     if (
       body &&
@@ -53,7 +62,7 @@ export const makeApiRequest = async (requestData) => {
     // First, try direct request
     const config = {
       method: method || "GET",
-      url: url,
+      url: authorizedRequest.url,
       headers: requestHeaders,
       data: processedBody,
       timeout: 30000,

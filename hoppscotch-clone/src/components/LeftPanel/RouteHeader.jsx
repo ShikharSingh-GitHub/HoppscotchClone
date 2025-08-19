@@ -86,6 +86,7 @@ const RouteHeader = ({ onRequestComplete }) => {
         url: activeTab.url,
         headers: activeTab.headers || {},
         body: activeTab.body || null,
+        auth: activeTab.auth || { authType: "none", authActive: true }, // Include auth data
       };
 
       console.log("🚀 Sending request:", requestData);
@@ -95,6 +96,7 @@ const RouteHeader = ({ onRequestComplete }) => {
       console.log("  - Headers:", requestData.headers);
       console.log("  - Body:", requestData.body);
       console.log("  - Body type:", typeof requestData.body);
+      console.log("  - Auth:", requestData.auth);
 
       const startTime = Date.now();
       const response = await makeApiRequest(requestData);
@@ -122,6 +124,7 @@ const RouteHeader = ({ onRequestComplete }) => {
         url: requestData.url,
         headers: requestData.headers || {}, // Ensure it's an object
         body: requestData.body || null,
+        auth: requestData.auth || { authType: "none", authActive: true }, // Include auth in history
         responseStatus: response?.status || 0,
         responseBody:
           typeof response?.data === "string"
