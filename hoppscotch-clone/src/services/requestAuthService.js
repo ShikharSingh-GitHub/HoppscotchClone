@@ -71,14 +71,28 @@ export const generateAuthParams = (auth) => {
   }
 };
 
-// Basic Auth
+// Basic Auth - Enhanced implementation following Hoppscotch patterns
 const generateBasicAuthHeaders = (auth) => {
-  if (!auth.username) return {};
+  if (!auth.username && !auth.password) return {};
 
-  const credentials = btoa(`${auth.username}:${auth.password || ""}`);
-  return {
-    Authorization: `Basic ${credentials}`,
-  };
+  // Handle case where username might be empty but password exists (edge case)
+  const username = auth.username || "";
+  const password = auth.password || "";
+
+  try {
+    // Create credentials string in format "username:password"
+    const credentialsString = `${username}:${password}`;
+
+    // Base64 encode the credentials
+    const encodedCredentials = btoa(credentialsString);
+
+    return {
+      Authorization: `Basic ${encodedCredentials}`,
+    };
+  } catch (error) {
+    console.error("Error generating Basic Auth header:", error);
+    return {};
+  }
 };
 
 // Bearer Token
@@ -90,7 +104,7 @@ const generateBearerTokenHeaders = (auth) => {
   };
 };
 
-// OAuth 2.0
+// OAuth 2.0 - Enhanced implementation following Hoppscotch patterns
 const generateOAuth2Headers = (auth) => {
   if (!auth.grantTypeInfo?.token) return {};
 

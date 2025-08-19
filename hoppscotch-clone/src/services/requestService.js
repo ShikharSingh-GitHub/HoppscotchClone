@@ -26,11 +26,13 @@ export const makeApiRequest = async (requestData) => {
     // Get app-level authentication header if available
     const appAuthHeader = useAuthStore.getState().getAuthHeader();
 
-    // Merge headers with app authentication (this is for app-level auth, not request auth)
+    // Merge headers with app authentication (only if no request-level auth is set)
     const requestHeaders = { ...authorizedRequest.headers };
-    if (appAuthHeader) {
+    if (appAuthHeader && !requestHeaders["Authorization"]) {
       requestHeaders["Authorization"] = appAuthHeader;
       console.log("🔐 Added app-level authentication header");
+    } else if (requestHeaders["Authorization"]) {
+      console.log("🔐 Using request-level authorization:", auth?.authType);
     }
 
     // Process the body based on Content-Type
