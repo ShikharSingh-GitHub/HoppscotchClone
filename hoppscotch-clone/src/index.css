@@ -224,3 +224,45 @@ details[open] .indicator {
 .group:hover .group-hover\:text-white {
   color: #ffffff; /* Bright white on hover */
 }
+
+/* Authorization Panel CodeMirror Styling */
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.autocomplete-wrapper .cm-editor {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+}
+
+.autocomplete-wrapper .cm-content {
+  padding: 8px 12px !important;
+  min-height: 44px !important;
+  line-height: 1.5 !important;
+  font-size: 12px !important;
+}
+
+.autocomplete-wrapper .cm-focused {
+  outline: none !important;
+}
+
+.autocomplete-wrapper .cm-scroller {
+  font-size: 12px !important;
+}
+
+/* Basic Auth form specific styling */
+.ph-no-capture {
+  position: relative;
+  width: 100%;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
