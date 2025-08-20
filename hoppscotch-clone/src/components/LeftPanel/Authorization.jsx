@@ -501,7 +501,7 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
 
       if (response.ok && data.access_token) {
         // Update the token field
-        onChange("token", data.access_token);
+        onNestedChange("grantTypeInfo", "token", data.access_token);
         console.log("Token generated successfully");
         alert("Token generated successfully!");
       } else {
@@ -629,8 +629,10 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
               type="text"
               className="w-full ps-2 placeholder:text-xs placeholder-zinc-600 placeholder:font-semibold focus:outline-none h-full text-xs"
               placeholder="Generated OAuth 2.0 Token"
-              value={config.token || ""}
-              onChange={(e) => onChange("token", e.target.value)}
+              value={config.grantTypeInfo?.token || ""}
+              onChange={(e) =>
+                onNestedChange("grantTypeInfo", "token", e.target.value)
+              }
             />
           </div>
           <div className="col-span-2 border-[0.5px] border-search-bg">
