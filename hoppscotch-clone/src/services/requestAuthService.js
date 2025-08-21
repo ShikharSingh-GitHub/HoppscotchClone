@@ -106,10 +106,13 @@ const generateBearerTokenHeaders = (auth) => {
 
 // OAuth 2.0 - Enhanced implementation following Hoppscotch patterns
 const generateOAuth2Headers = (auth) => {
-  if (!auth.grantTypeInfo?.token) return {};
+  const nestedToken = auth.grantTypeInfo?.token;
+  const topLevelToken = auth.token;
+  const token = nestedToken || topLevelToken;
+  if (!token) return {};
 
   return {
-    Authorization: `Bearer ${auth.grantTypeInfo.token}`,
+    Authorization: `Bearer ${token}`,
   };
 };
 

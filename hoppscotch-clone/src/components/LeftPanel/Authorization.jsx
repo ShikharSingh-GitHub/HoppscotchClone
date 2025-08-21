@@ -105,7 +105,7 @@ const Authorization = () => {
             authEndpoint: "",
             tokenEndpoint: "",
             redirectURI: "",
-            scopes: "",
+            scope: "",
             audience: "",
             addTo: "HEADERS",
             clientAuthentication: "AS_BASIC_AUTH_HEADERS",
@@ -357,155 +357,113 @@ const BearerTokenForm = ({ config, onChange }) => {
 
 // OAuth 2.0 Form Component - Client Credentials Focus
 const OAuth2Form = ({ config, onChange, onNestedChange }) => {
-  const [clientAuthDropdownOpen, setClientAuthDropdownOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  console.log("🔍 OAuth2Form render - config:", config);
+  console.log(
+    "🔍 OAuth2Form render - grantTypeInfo.token:",
+    config.grantTypeInfo?.token
+  );
 
-  const clientAuthButtonRef = useRef(null);
-
-  const [clientAuthButtonPosition, setClientAuthButtonPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 0,
-  });
-
-  // Client auth options
+  // Options for client authentication methods
   const clientAuthOptions = [
     { key: "AS_BASIC_AUTH_HEADERS", label: "Send as Basic Auth Header" },
-    { key: "IN_BODY", label: "Send credentials in Body" },
+    { key: "IN_BODY", label: "Send client credentials in body" },
   ];
-
-  // Ensure grant type is always CLIENT_CREDENTIALS
-  useEffect(() => {
-    if (config.grantTypeInfo?.grantType !== "CLIENT_CREDENTIALS") {
-      onNestedChange("grantTypeInfo", "grantType", "CLIENT_CREDENTIALS");
-    }
-  }, []);
-
-  // Toggle client auth dropdown
-  const toggleClientAuthDropdown = (e) => {
-    e.stopPropagation();
-    if (!clientAuthDropdownOpen && clientAuthButtonRef.current) {
-      const rect = clientAuthButtonRef.current.getBoundingClientRect();
-      setClientAuthButtonPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
-    }
-    setClientAuthDropdownOpen(!clientAuthDropdownOpen);
+  // Toggle client authentication dropdown
+  const toggleClientAuthDropdown = () => {
+    setClientAuthDropdownOpen((open) => !open);
   };
-
-  // Handle client auth change
-  const handleClientAuthChange = (authType) => {
-    console.log("Client auth changed to:", authType);
-    setClientAuthDropdownOpen(false);
-    onNestedChange("grantTypeInfo", "clientAuthentication", authType);
-  };
-
-  // Generate Token Function
+  const [clientAuthDropdownOpen, setClientAuthDropdownOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const clientAuthButtonRef = useRef(null);
   const handleGenerateToken = async () => {
     setIsGenerating(true);
-
     try {
       const tokenEndpoint = config.grantTypeInfo?.tokenEndpoint;
       const clientID = config.grantTypeInfo?.clientID;
       const clientSecret = config.grantTypeInfo?.clientSecret;
       const audience = config.grantTypeInfo?.audience;
-      const scopes = config.grantTypeInfo?.scopes;
+      const scope = config.grantTypeInfo?.scope;
       const clientAuth =
         config.grantTypeInfo?.clientAuthentication || "AS_BASIC_AUTH_HEADERS";
 
-      console.log("Current config:", config);
-      console.log("Grant type info:", config.grantTypeInfo);
-      console.log("Values check:", {
-        tokenEndpoint,
-        clientID,
-        clientSecret,
-        audience,
-        scopes,
-        clientAuth,
-      });
-
-      // Improved validation with better error messages
+      // Validation
       const missingFields = [];
       if (!tokenEndpoint || tokenEndpoint.trim() === "")
         missingFields.push("Token Endpoint");
       if (!clientID || clientID.trim() === "") missingFields.push("Client ID");
       if (!clientSecret || clientSecret.trim() === "")
         missingFields.push("Client Secret");
-
       if (missingFields.length > 0) {
         alert(
           `Please fill in the following required fields: ${missingFields.join(
             ", "
           )}`
         );
-        console.error("Missing fields:", missingFields);
         setIsGenerating(false);
         return;
       }
 
-      console.log("Generating token with:", {
-        tokenEndpoint,
-        clientID: clientID.substring(0, 10) + "...", // Partial log for security
-        clientAuth,
-        audience,
-        scopes,
-      });
+      // Call backend proxy with fallbacks for different dev modes
+      const endpoints = [
+        "/api/proxy/oauth2-token",
+        "http://localhost:5001/api/proxy/oauth2-token",
+        "http://localhost:5000/api/proxy/oauth2-token",
+      ];
 
-      let headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-      };
-
-      let body = new URLSearchParams({
-        grant_type: "client_credentials",
-      });
-
-      // Add audience if provided (required for Auth0)
-      if (audience && audience.trim() !== "") {
-        body.append("audience", audience.trim());
+      let response;
+      let lastError;
+      for (const endpoint of endpoints) {
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tokenEndpoint,
+              clientID,
+              clientSecret,
+              audience,
+              scope,
+              clientAuthentication: clientAuth,
+            }),
+          });
+          // Use the first non-404 or OK response
+          if (resp.ok || resp.status !== 404) {
+            response = resp;
+            break;
+          } else {
+            lastError = new Error(
+              `Endpoint ${endpoint} responded with ${resp.status}`
+            );
+          }
+        } catch (e) {
+          lastError = e;
+        }
       }
 
-      // Add scopes if provided
-      if (scopes && scopes.trim() !== "") {
-        body.append("scope", scopes.trim());
+      if (!response) {
+        throw lastError || new Error("All OAuth2 proxy endpoints failed");
       }
-
-      // Handle client authentication
-      if (clientAuth === "AS_BASIC_AUTH_HEADERS") {
-        // Send as Basic Auth Header
-        const credentials = btoa(`${clientID}:${clientSecret}`);
-        headers["Authorization"] = `Basic ${credentials}`;
-        console.log("Using Basic Auth header");
-      } else {
-        // Send credentials in body
-        body.append("client_id", clientID);
-        body.append("client_secret", clientSecret);
-        console.log("Using credentials in body");
+      let data;
+      try {
+        data = await response.clone().json();
+      } catch (e) {
+        // If response is not JSON, fallback to text (using clone)
+        try {
+          const text = await response.text();
+          data = { error: text || "Empty response from server" };
+        } catch (err) {
+          data = { error: "Unable to read response body" };
+        }
       }
-
-      console.log("Making request to:", tokenEndpoint);
-      console.log("Request headers:", headers);
-      console.log("Request body:", body.toString());
-
-      const response = await fetch(tokenEndpoint, {
-        method: "POST",
-        headers: headers,
-        body: body.toString(),
-        mode: "cors", // Explicitly set CORS mode
-      });
-
-      const data = await response.json();
-      console.log("Response status:", response.status);
-      console.log("Response data:", data);
-
       if (response.ok && data.access_token) {
-        // Update the token field
+        console.log("✅ Token generated successfully:", data.access_token);
+        console.log("🔐 Storing token in grantTypeInfo.token");
         onNestedChange("grantTypeInfo", "token", data.access_token);
-        console.log("Token generated successfully");
+        console.log("🔐 Storing token in main token field");
+        onChange("token", data.access_token); // Also store in main token field
+        console.log("🔐 Current auth config after update:", config);
         alert("Token generated successfully!");
       } else {
-        console.error("Token generation failed:", data);
         alert(
           `Token generation failed: ${
             data.error_description || data.error || "Unknown error"
@@ -513,16 +471,7 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
         );
       }
     } catch (error) {
-      console.error("Error generating token:", error);
-
-      // Better error handling for common issues
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        alert(
-          `Network Error: This might be a CORS issue. The browser is blocking the request to Auth0. \n\nSuggestions:\n1. Use a tool like Postman for testing\n2. Set up a backend proxy\n3. Test with a deployed version of your app\n\nOriginal error: ${error.message}`
-        );
-      } else {
-        alert(`Error generating token: ${error.message}`);
-      }
+      alert(`Error generating token: ${error.message}`);
     } finally {
       setIsGenerating(false);
     }
@@ -534,7 +483,7 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
     const clientID = config.grantTypeInfo?.clientID;
     const clientSecret = config.grantTypeInfo?.clientSecret;
     const audience = config.grantTypeInfo?.audience;
-    const scopes = config.grantTypeInfo?.scopes;
+    const scope = config.grantTypeInfo?.scope;
     const clientAuth =
       config.grantTypeInfo?.clientAuthentication || "AS_BASIC_AUTH_HEADERS";
 
@@ -562,9 +511,9 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
   -d "audience=${encodeURIComponent(audience.trim())}"`;
     }
 
-    if (scopes && scopes.trim() !== "") {
+    if (scope && scope.trim() !== "") {
       curlCommand += ` \\
-  -d "scope=${encodeURIComponent(scopes.trim())}"`;
+  -d "scope=${encodeURIComponent(scope.trim())}"`;
     }
 
     if (clientAuth !== "AS_BASIC_AUTH_HEADERS") {
@@ -629,13 +578,14 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
               type="text"
               className="w-full ps-2 placeholder:text-xs placeholder-zinc-600 placeholder:font-semibold focus:outline-none h-full text-xs"
               placeholder="Generated OAuth 2.0 Token"
-              value={config.grantTypeInfo?.token || ""}
-              onChange={(e) =>
-                onNestedChange("grantTypeInfo", "token", e.target.value)
-              }
+              value={config.grantTypeInfo?.token || config.token || ""}
+              onChange={(e) => {
+                onNestedChange("grantTypeInfo", "token", e.target.value);
+                onChange("token", e.target.value);
+              }}
             />
           </div>
-          <div className="col-span-2 border-[0.5px] border-search-bg">
+          <div className="col-span-3 border-[0.5px] border-search-bg">
             <button
               onClick={handleGenerateToken}
               disabled={isGenerating}
@@ -643,21 +593,29 @@ const OAuth2Form = ({ config, onChange, onNestedChange }) => {
               {isGenerating ? "Generating..." : "Generate"}
             </button>
           </div>
-          <div className="col-span-1 border-[0.5px] border-search-bg">
-            <button
-              onClick={generateCurlCommand}
-              className="w-full h-full px-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors"
-              title="Generate curl command for testing">
-              📋
-            </button>
+        </div>
+        <div className="border-r border-t border-b border-search-bg w-10"></div>
+      </div>
+
+      {/* Scope Field */}
+      <div className="flex justify-between h-9">
+        <div className="border-t border-l border-b border-search-bg w-10"></div>
+        <div className="w-full grid grid-cols-12">
+          <div className="col-span-3 border-[0.5px] border-search-bg flex items-center">
+            <label className="text-xs font-semibold text-zinc-400 ps-2">
+              Scope
+            </label>
           </div>
-          <div className="col-span-1 border-[0.5px] border-search-bg">
-            <button
-              onClick={() => console.log("Current config:", config)}
-              className="w-full h-full px-1 bg-zinc-600 hover:bg-zinc-500 text-white text-xs font-semibold transition-colors"
-              title="Debug - Check console">
-              🐛
-            </button>
+          <div className="col-span-9 border-[0.5px] border-search-bg">
+            <input
+              type="text"
+              className="w-full ps-2 placeholder:text-xs placeholder-zinc-600 placeholder:font-semibold focus:outline-none h-full text-xs"
+              placeholder="e.g. openid profile email"
+              value={config.grantTypeInfo?.scope || ""}
+              onChange={(e) =>
+                onNestedChange("grantTypeInfo", "scope", e.target.value)
+              }
+            />
           </div>
         </div>
         <div className="border-r border-t border-b border-search-bg w-10"></div>

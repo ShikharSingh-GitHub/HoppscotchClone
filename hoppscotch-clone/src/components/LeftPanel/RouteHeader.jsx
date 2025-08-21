@@ -75,7 +75,8 @@ const RouteHeader = ({ onRequestComplete }) => {
         url: activeTab.url,
         headers: activeTab.headers || {},
         body: activeTab.body || null,
-        auth: activeTab.auth || { authType: "none", authActive: true }, // Include auth data
+        auth: activeTab.auth ||
+          currentRequest?.auth || { authType: "none", authActive: true }, // Include auth data
       };
 
       console.log("🚀 Sending request:", requestData);

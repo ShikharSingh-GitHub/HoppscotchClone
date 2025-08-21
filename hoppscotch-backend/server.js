@@ -99,6 +99,10 @@ app.use("/api/history", historyRoutes);
 const authRoutes = createAuthRoutes(pool);
 app.use("/api/auth", authRoutes);
 
+// Proxy OAuth2 token route
+const proxyRoutes = require("./routes/proxy");
+app.use("/api/proxy", proxyRoutes);
+
 // ============================================
 // DUMMY APIS FOR TESTING AND DEMO PURPOSES
 // ============================================
@@ -579,13 +583,31 @@ app.all("/api/proxy", async (req, res) => {
       return res.status(400).json({ error: "URL parameter is required" });
     }
 
-    console.log(`Proxying ${method} request to: ${url}`);
+    // Normalize URL for localhost targets to avoid SSL errors if https is used
+    let targetUrl = url;
+    try {
+      const parsed = new URL(url);
+      if (
+        (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") &&
+        parsed.protocol === "https:"
+      ) {
+        parsed.protocol = "http:";
+        targetUrl = parsed.toString();
+        console.log(
+          `Proxy: Downgraded HTTPS to HTTP for localhost: ${targetUrl}`
+        );
+      }
+    } catch (e) {
+      // If URL parsing fails, keep original
+    }
+
+    console.log(`Proxying ${method} request to: ${targetUrl}`);
 
     const axios = require("axios");
 
     const config = {
       method: method.toLowerCase(),
-      url: url,
+      url: targetUrl,
       headers: {
         ...headers,
         // Remove browser-specific headers that might cause issues

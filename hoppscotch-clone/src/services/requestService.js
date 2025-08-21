@@ -84,9 +84,39 @@ export const makeApiRequest = async (requestData) => {
       // Check if it's a CORS error
       if (directError.message && directError.message.includes("cors")) {
         console.log("CORS error detected, trying proxy...");
-        return await makeProxyRequest(requestData);
+        // Use the authorized request (with Authorization header applied)
+        return await makeProxyRequest(authorizedRequest);
       }
-      throw directError;
+
+      // Check if it's a network error that might be CORS-related
+      if (
+        directError.code === "ERR_NETWORK" ||
+        directError.message.includes("cors") ||
+        directError.message.includes("origin")
+      ) {
+        console.log("Network/CORS error detected, trying proxy...");
+        try {
+          // Use the authorized request (with Authorization header applied)
+          return await makeProxyRequest(authorizedRequest);
+        } catch (proxyError) {
+          console.error("Proxy request also failed:", proxyError);
+          console.error("Proxy error details:", proxyError.message);
+        }
+      }
+
+      // Return error response if available
+      if (directError.response) {
+        return directError.response;
+      }
+
+      // Return formatted error object
+      return {
+        status: 0,
+        statusText: directError.message || "Request failed",
+        data: null,
+        headers: {},
+        error: true,
+      };
     }
   } catch (error) {
     console.error("API request failed:", error);
@@ -99,7 +129,14 @@ export const makeApiRequest = async (requestData) => {
     ) {
       console.log("Network/CORS error detected, trying proxy...");
       try {
-        return await makeProxyRequest(requestData);
+        // Create a basic request structure for proxy fallback
+        const fallbackRequest = {
+          method: requestData.method || "GET",
+          url: requestData.url,
+          headers: requestData.headers || {},
+          body: requestData.body,
+        };
+        return await makeProxyRequest(fallbackRequest);
       } catch (proxyError) {
         console.error("Proxy request also failed:", proxyError);
       }
@@ -156,7 +193,11 @@ const makeProxyRequest = async (requestData) => {
     }
   }
 
-  const proxyUrl = "http://localhost:5001/api/proxy";
+  const proxyUrls = [
+    "/api/proxy",
+    "http://localhost:5001/api/proxy",
+    "http://localhost:5000/api/proxy",
+  ];
   const proxyPayload = {
     url: url,
     method: method || "GET",
@@ -166,12 +207,20 @@ const makeProxyRequest = async (requestData) => {
 
   console.log("🔄 Making proxy request:", proxyPayload);
 
-  const response = await axios.post(proxyUrl, proxyPayload, {
-    headers: proxyHeaders, // Headers for the proxy request (including auth)
-    timeout: 30000,
-    validateStatus: (status) => true,
-  });
+  let lastError;
+  for (const proxyUrl of proxyUrls) {
+    try {
+      const response = await axios.post(proxyUrl, proxyPayload, {
+        headers: proxyHeaders, // Headers for the proxy request (including auth)
+        timeout: 30000,
+        validateStatus: (status) => true,
+      });
+      // Proxy returns original response structure
+      return response.data;
+    } catch (err) {
+      lastError = err;
+    }
+  }
 
-  // The proxy returns the original response data
-  return response.data;
+  throw lastError || new Error("All proxy endpoints failed");
 };
