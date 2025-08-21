@@ -22,6 +22,7 @@ const TabProvider = ({ children }) => {
       headers: {},
       body: "",
       params: [],
+      auth: { authType: "none", authActive: true }, // Add auth field
     },
   ]);
   const [activeTabId, setActiveTabId] = useState(1);
@@ -44,6 +45,7 @@ const TabProvider = ({ children }) => {
       headers: {},
       body: "",
       params: [],
+      auth: { authType: "none", authActive: true }, // Add auth field
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newId);
