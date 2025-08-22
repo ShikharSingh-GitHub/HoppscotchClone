@@ -23,6 +23,8 @@ class StorageInterface {
         return { success: true };
       }
 
+      console.log("🔧 Starting storage interface initialization...");
+
       // Initialize storage configuration
       const storageConfig = useStorageConfigStore.getState();
       await storageConfig.initializeStorage();
@@ -57,7 +59,31 @@ class StorageInterface {
       return { success: true };
     } catch (error) {
       console.error("❌ Failed to initialize Storage Interface:", error);
-      return { success: false, error: error.message };
+
+      // Fallback to JSON storage if initialization fails
+      try {
+        console.log("🔄 Attempting fallback to JSON storage...");
+        await this.switchToStorageType("json");
+
+        // Update storage config to reflect fallback
+        const storageConfig = useStorageConfigStore.getState();
+        storageConfig.setStorageType("json");
+
+        this.initialized = true;
+        console.log(
+          "✅ Storage Interface initialized with JSON storage fallback"
+        );
+        return { success: true };
+      } catch (fallbackError) {
+        console.error(
+          "❌ Fallback to JSON storage also failed:",
+          fallbackError
+        );
+        return {
+          success: false,
+          error: `Initialization failed: ${error.message}. Fallback failed: ${fallbackError.message}`,
+        };
+      }
     }
   }
 

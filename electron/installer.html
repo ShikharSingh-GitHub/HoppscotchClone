@@ -745,120 +745,166 @@
           </div>
         </div>
 
-        <!-- Step 5: Database Configuration -->
+        <!-- Step 5: Storage Configuration -->
         <div class="page" id="page5">
-          <h1 class="page-title">Database Configuration</h1>
+          <h1 class="page-title">Storage Configuration</h1>
           <p class="page-subtitle">
-            Set up your MySQL database connection for storing API history and
-            user data.
+            Choose how you want to store your API history and user data.
           </p>
 
           <div class="config-section">
-            <div class="config-title">Database Connection</div>
+            <div class="config-title">Storage Options</div>
 
             <div class="form-group">
-              <label class="form-label">Database Type</label>
+              <label class="form-label">Storage Type</label>
               <select
                 class="form-select"
-                id="dbType"
-                onchange="toggleDBOptions()">
-                <option value="mysql">MySQL</option>
-                <option value="sqlite">SQLite (Local file)</option>
-                <option value="skip">Skip database setup (use later)</option>
+                id="storageType"
+                onchange="toggleStorageOptions()">
+                <option value="database">Database (Recommended)</option>
+                <option value="json">JSON Files (Local, No Setup Required)</option>
+                <option value="skip">Skip for now (Configure later)</option>
               </select>
             </div>
 
-            <div id="mysqlOptions">
-              <div class="db-grid">
-                <div class="form-group">
-                  <label class="form-label">Host</label>
-                  <input
-                    type="text"
-                    class="form-input"
-                    id="dbHost"
-                    value="localhost"
-                    placeholder="localhost" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Port</label>
-                  <input
-                    type="number"
-                    class="form-input"
-                    id="dbPort"
-                    value="3306"
-                    placeholder="3306" />
-                </div>
-              </div>
-
+            <!-- Database Configuration -->
+            <div id="databaseOptions">
+              <div class="config-title" style="margin-top: 20px;">Database Connection</div>
+              
               <div class="form-group">
-                <label class="form-label">Database Name</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  id="dbName"
-                  value="hoppscotch_clone"
-                  placeholder="hoppscotch_clone" />
+                <label class="form-label">Database Type</label>
+                <select
+                  class="form-select"
+                  id="dbType"
+                  onchange="toggleDBOptions()">
+                  <option value="mysql">MySQL</option>
+                  <option value="sqlite">SQLite (Local file)</option>
+                </select>
               </div>
 
-              <div class="db-grid">
+              <div id="mysqlOptions">
+                <div class="db-grid">
+                  <div class="form-group">
+                    <label class="form-label">Host</label>
+                    <input
+                      type="text"
+                      class="form-input"
+                      id="dbHost"
+                      value="localhost"
+                      placeholder="localhost" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Port</label>
+                    <input
+                      type="number"
+                      class="form-input"
+                      id="dbPort"
+                      value="3306"
+                      placeholder="3306" />
+                  </div>
+                </div>
+
                 <div class="form-group">
-                  <label class="form-label">Username</label>
+                  <label class="form-label">Database Name</label>
                   <input
                     type="text"
                     class="form-input"
-                    id="dbUsername"
-                    value="root"
-                    placeholder="root" />
+                    id="dbName"
+                    value="hoppscotch_clone"
+                    placeholder="hoppscotch_clone" />
                 </div>
-                <div class="form-group">
-                  <label class="form-label">Password</label>
-                  <input
-                    type="password"
-                    class="form-input"
-                    id="dbPassword"
-                    placeholder="Enter password" />
+
+                <div class="db-grid">
+                  <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input
+                      type="text"
+                      class="form-input"
+                      id="dbUsername"
+                      value="root"
+                      placeholder="root" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input
+                      type="password"
+                      class="form-input"
+                      id="dbPassword"
+                      placeholder="Enter password" />
+                  </div>
+                </div>
+
+                <div class="test-connection" onclick="testDatabaseConnection()">
+                  🔍 Test Database Connection
                 </div>
               </div>
 
-              <div class="test-connection" onclick="testDatabaseConnection()">
-                🔍 Test Database Connection
+              <div id="sqliteOptions" style="display: none">
+                <div class="form-group">
+                  <label class="form-label">Database File Location</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    id="sqlitePath"
+                    value="./data/hoppscotch.db"
+                    readonly />
+                  <small style="color: #7f8c8d; font-size: 12px"
+                    >SQLite database will be created automatically</small
+                  >
+                </div>
+              </div>
+
+              <div class="checkbox-group">
+                <input type="checkbox" id="createTables" checked />
+                <label for="createTables" class="checkbox-label">
+                  Create database tables automatically
+                </label>
+              </div>
+
+              <div class="checkbox-group">
+                <input type="checkbox" id="seedData" />
+                <label for="seedData" class="checkbox-label">
+                  Add sample data to database
+                </label>
               </div>
             </div>
 
-            <div id="sqliteOptions" style="display: none">
+            <!-- JSON Storage Configuration -->
+            <div id="jsonOptions" style="display: none">
+              <div class="config-title" style="margin-top: 20px;">JSON Storage</div>
+              <p style="color: #7f8c8d; margin-bottom: 20px;">
+                JSON storage saves all data locally in files. No database setup required, 
+                but data is not shared between devices.
+              </p>
+              
               <div class="form-group">
-                <label class="form-label">Database File Location</label>
+                <label class="form-label">Storage Location</label>
                 <input
                   type="text"
                   class="form-input"
-                  id="sqlitePath"
-                  value="./data/hoppscotch.db"
+                  id="jsonStoragePath"
+                  value="./data/json"
                   readonly />
                 <small style="color: #7f8c8d; font-size: 12px"
-                  >SQLite database will be created automatically</small
+                  >JSON files will be stored in this directory</small
                 >
+              </div>
+
+              <div class="checkbox-group">
+                <input type="checkbox" id="jsonBackup" checked />
+                <label for="jsonBackup" class="checkbox-label">
+                  Create automatic backups of JSON data
+                </label>
+              </div>
+
+              <div class="checkbox-group">
+                <input type="checkbox" id="jsonEncrypt" />
+                <label for="jsonEncrypt" class="checkbox-label">
+                  Encrypt sensitive data in JSON files
+                </label>
               </div>
             </div>
           </div>
-
-          <div class="config-section">
-            <div class="config-title">Advanced Database Options</div>
-            <div class="form-checkbox">
-              <input type="checkbox" id="createTables" checked />
-              <label for="createTables"
-                >Automatically create database tables</label
-              >
-            </div>
-            <div class="form-checkbox">
-              <input type="checkbox" id="seedData" />
-              <label for="seedData">Install sample data and examples</label>
-            </div>
-          </div>
-
-          <div
-            id="connectionStatus"
-            class="error-message"
-            style="display: none"></div>
         </div>
 
         <!-- Step 6: Review and Confirm -->

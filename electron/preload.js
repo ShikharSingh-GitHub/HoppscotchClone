@@ -8,6 +8,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Configuration
   getBackendPort: () => ipcRenderer.invoke("get-backend-port"),
+  getStorageConfig: () => ipcRenderer.invoke("get-storage-config"),
+
+  // JSON Storage methods
+  getStoragePath: () => ipcRenderer.invoke("get-storage-path"),
+  ensureDirectory: (dirPath) => ipcRenderer.invoke("ensure-directory", dirPath),
+  readJsonFile: (filePath) => ipcRenderer.invoke("read-json-file", filePath),
+  writeJsonFile: (filePath, data) =>
+    ipcRenderer.invoke("write-json-file", filePath, data),
+  backupJsonFile: (sourcePath, backupDir) =>
+    ipcRenderer.invoke("backup-json-file", sourcePath, backupDir),
 
   // Installer methods
   installerComplete: () => ipcRenderer.invoke("installer-complete"),

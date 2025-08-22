@@ -9,6 +9,7 @@ let installationConfig = {
   autoPortDetection: true,
   allowLocalhost: true,
   allowLAN: false,
+  storageType: "database", // Add storage type
   dbType: "mysql",
   dbHost: "localhost",
   dbPort: 3306,
@@ -17,6 +18,8 @@ let installationConfig = {
   dbPassword: "",
   createTables: true,
   seedData: false,
+  jsonBackup: true, // Add JSON storage options
+  jsonEncrypt: false,
   createDesktopShortcut: true,
   createStartMenu: true,
   autoStart: false,
@@ -37,6 +40,7 @@ function initializeInstaller() {
   const acceptLicense = document.getElementById("acceptLicense");
   const frontendPort = document.getElementById("frontendPort");
   const backendPort = document.getElementById("backendPort");
+  const storageType = document.getElementById("storageType");
   const dbHost = document.getElementById("dbHost");
   const dbName = document.getElementById("dbName");
   const dbUsername = document.getElementById("dbUsername");
@@ -45,6 +49,7 @@ function initializeInstaller() {
   if (acceptLicense) acceptLicense.addEventListener("change", validateStep);
   if (frontendPort) frontendPort.addEventListener("input", validateStep);
   if (backendPort) backendPort.addEventListener("input", validateStep);
+  if (storageType) storageType.addEventListener("change", toggleStorageOptions);
   if (dbHost) dbHost.addEventListener("input", validateStep);
   if (dbName) dbName.addEventListener("input", validateStep);
   if (dbUsername) dbUsername.addEventListener("input", validateStep);
@@ -55,6 +60,11 @@ function initializeInstaller() {
   if (prevBtn) {
     prevBtn.onclick = previousStep;
   }
+
+  // Initialize storage options display
+  setTimeout(() => {
+    toggleStorageOptions();
+  }, 100);
 
   console.log("Installer initialized successfully");
 }
@@ -203,37 +213,32 @@ function validateStep() {
       break;
 
     case 5:
-      const dbTypeSelect = document.getElementById("dbType");
-      if (dbTypeSelect && dbTypeSelect.value === "sqlite") {
-        isValid = true;
-      } else if (dbTypeSelect && dbTypeSelect.value === "skip") {
-        isValid = true;
-      } else {
-        const dbHost = document.getElementById("dbHost");
-        const dbName = document.getElementById("dbName");
-        const dbUsername = document.getElementById("dbUsername");
-        const dbTestStatus = document.getElementById("dbTestStatus");
+      const storageTypeSelect = document.getElementById("storageType");
+      installationConfig.storageType = storageTypeSelect ? storageTypeSelect.value : "database";
 
-        isValid =
-          dbHost &&
-          dbName &&
-          dbUsername &&
-          dbHost.value.trim() !== "" &&
-          dbName.value.trim() !== "" &&
-          dbUsername.value.trim() !== "";
+      if (installationConfig.storageType === "database") {
+        const dbTypeSelect = document.getElementById("dbType");
+        installationConfig.dbType = dbTypeSelect ? dbTypeSelect.value : "mysql";
 
-        // If database config is valid but not tested, encourage testing
-        if (
-          isValid &&
-          (!dbTestStatus || !dbTestStatus.classList.contains("test-success"))
-        ) {
-          const testBtn = document.querySelector(
-            '.test-connection[onclick*="testDatabaseConnection"]'
+        if (installationConfig.dbType === "mysql") {
+          installationConfig.dbHost = document.getElementById("dbHost").value;
+          installationConfig.dbPort = parseInt(
+            document.getElementById("dbPort").value
           );
-          if (testBtn) {
-            testBtn.style.animation = "pulse 2s infinite";
-          }
+          installationConfig.dbName = document.getElementById("dbName").value;
+          installationConfig.dbUsername =
+            document.getElementById("dbUsername").value;
+          installationConfig.dbPassword =
+            document.getElementById("dbPassword").value;
         }
+
+        installationConfig.createTables =
+          document.getElementById("createTables").checked;
+        installationConfig.seedData = document.getElementById("seedData").checked;
+      } else if (installationConfig.storageType === "json") {
+        // Save JSON storage options
+        installationConfig.jsonBackup = document.getElementById("jsonBackup").checked;
+        installationConfig.jsonEncrypt = document.getElementById("jsonEncrypt").checked;
       }
       break;
 
@@ -305,24 +310,33 @@ function saveCurrentStepData() {
       break;
 
     case 5:
-      const dbTypeSelect = document.getElementById("dbType");
-      installationConfig.dbType = dbTypeSelect ? dbTypeSelect.value : "mysql";
+      const storageTypeSelect = document.getElementById("storageType");
+      installationConfig.storageType = storageTypeSelect ? storageTypeSelect.value : "database";
 
-      if (installationConfig.dbType === "mysql") {
-        installationConfig.dbHost = document.getElementById("dbHost").value;
-        installationConfig.dbPort = parseInt(
-          document.getElementById("dbPort").value
-        );
-        installationConfig.dbName = document.getElementById("dbName").value;
-        installationConfig.dbUsername =
-          document.getElementById("dbUsername").value;
-        installationConfig.dbPassword =
-          document.getElementById("dbPassword").value;
+      if (installationConfig.storageType === "database") {
+        const dbTypeSelect = document.getElementById("dbType");
+        installationConfig.dbType = dbTypeSelect ? dbTypeSelect.value : "mysql";
+
+        if (installationConfig.dbType === "mysql") {
+          installationConfig.dbHost = document.getElementById("dbHost").value;
+          installationConfig.dbPort = parseInt(
+            document.getElementById("dbPort").value
+          );
+          installationConfig.dbName = document.getElementById("dbName").value;
+          installationConfig.dbUsername =
+            document.getElementById("dbUsername").value;
+          installationConfig.dbPassword =
+            document.getElementById("dbPassword").value;
+        }
+
+        installationConfig.createTables =
+          document.getElementById("createTables").checked;
+        installationConfig.seedData = document.getElementById("seedData").checked;
+      } else if (installationConfig.storageType === "json") {
+        // Save JSON storage options
+        installationConfig.jsonBackup = document.getElementById("jsonBackup").checked;
+        installationConfig.jsonEncrypt = document.getElementById("jsonEncrypt").checked;
       }
-
-      installationConfig.createTables =
-        document.getElementById("createTables").checked;
-      installationConfig.seedData = document.getElementById("seedData").checked;
       break;
   }
 }
@@ -402,12 +416,39 @@ function testPorts() {
 }
 
 function toggleDBOptions() {
-  const dbType = document.querySelector('input[name="dbType"]:checked');
+  const dbType = document.getElementById("dbType");
   const mysqlOptions = document.getElementById("mysqlOptions");
+  const sqliteOptions = document.getElementById("sqliteOptions");
 
-  if (mysqlOptions) {
-    mysqlOptions.style.display =
-      dbType && dbType.value === "mysql" ? "block" : "none";
+  if (mysqlOptions && sqliteOptions) {
+    if (dbType.value === "mysql") {
+      mysqlOptions.style.display = "block";
+      sqliteOptions.style.display = "none";
+    } else if (dbType.value === "sqlite") {
+      mysqlOptions.style.display = "none";
+      sqliteOptions.style.display = "block";
+    }
+  }
+
+  validateStep();
+}
+
+function toggleStorageOptions() {
+  const storageType = document.getElementById("storageType");
+  const databaseOptions = document.getElementById("databaseOptions");
+  const jsonOptions = document.getElementById("jsonOptions");
+
+  if (databaseOptions && jsonOptions) {
+    if (storageType.value === "database") {
+      databaseOptions.style.display = "block";
+      jsonOptions.style.display = "none";
+    } else if (storageType.value === "json") {
+      databaseOptions.style.display = "none";
+      jsonOptions.style.display = "block";
+    } else if (storageType.value === "skip") {
+      databaseOptions.style.display = "none";
+      jsonOptions.style.display = "none";
+    }
   }
 
   validateStep();

@@ -226,48 +226,102 @@ const useStorageConfigStore = create(
         try {
           console.log("🔍 Testing database connection...");
 
-          // Try to get base URL from API service
-          const port = window.electronAPI
-            ? await window.electronAPI.getBackendPort?.()
-            : 5001;
+          // Check if we're in Electron mode
+          if (window.electronAPI && window.electronAPI.getBackendPort) {
+            try {
+              const port = await window.electronAPI.getBackendPort();
+              console.log("🔌 Electron mode - backend port:", port);
 
-          const baseURL = `http://localhost:${port}`;
-          const healthURL = `${baseURL}/health`;
+              const baseURL = `http://localhost:${port}`;
+              const healthURL = `${baseURL}/health`;
 
-          console.log("🌐 Testing connection to:", healthURL);
+              console.log("🌐 Testing connection to:", healthURL);
 
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-          const response = await fetch(healthURL, {
-            method: "GET",
-            signal: controller.signal,
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          });
+              const response = await fetch(healthURL, {
+                method: "GET",
+                signal: controller.signal,
+                headers: {
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+                },
+              });
 
-          clearTimeout(timeoutId);
+              clearTimeout(timeoutId);
 
-          console.log("📡 Health check response status:", response.status);
+              console.log("📡 Health check response status:", response.status);
 
-          if (response.ok) {
-            const data = await response.json();
-            console.log("✅ Database server response:", data);
+              if (response.ok) {
+                const data = await response.json();
+                console.log("✅ Database server response:", data);
 
-            set({
-              databaseConfig: {
-                ...get().databaseConfig,
-                connected: true,
-                lastSyncTime: new Date().toISOString(),
-                connectionError: null,
+                set({
+                  databaseConfig: {
+                    ...get().databaseConfig,
+                    connected: true,
+                    lastSyncTime: new Date().toISOString(),
+                    connectionError: null,
+                  },
+                });
+
+                return true;
+              } else {
+                throw new Error(
+                  `HTTP ${response.status}: ${response.statusText}`
+                );
+              }
+            } catch (error) {
+              console.warn(
+                "❌ Electron database connection test failed:",
+                error.message
+              );
+              throw error;
+            }
+          } else {
+            // Browser mode - use default port
+            console.log("🌐 Browser mode - using default port 5001");
+            const baseURL = "http://localhost:5001";
+            const healthURL = `${baseURL}/health`;
+
+            console.log("🌐 Testing connection to:", healthURL);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            const response = await fetch(healthURL, {
+              method: "GET",
+              signal: controller.signal,
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
               },
             });
 
-            return true;
-          } else {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            clearTimeout(timeoutId);
+
+            console.log("📡 Health check response status:", response.status);
+
+            if (response.ok) {
+              const data = await response.json();
+              console.log("✅ Database server response:", data);
+
+              set({
+                databaseConfig: {
+                  ...get().databaseConfig,
+                  connected: true,
+                  lastSyncTime: new Date().toISOString(),
+                  connectionError: null,
+                },
+              });
+
+              return true;
+            } else {
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`
+              );
+            }
           }
         } catch (error) {
           console.warn("❌ Database connection test failed:", error.message);

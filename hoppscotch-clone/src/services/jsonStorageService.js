@@ -28,11 +28,23 @@ class JsonStorageService {
   // Initialize storage
   async initialize() {
     try {
+      console.log("🔧 Initializing JSON Storage Service...");
+
       if (this.isElectron) {
-        await this.initializeElectronStorage();
+        try {
+          await this.initializeElectronStorage();
+        } catch (electronError) {
+          console.warn(
+            "⚠️ Electron storage failed, falling back to browser storage:",
+            electronError.message
+          );
+          // Fallback to browser storage if Electron fails
+          await this.initializeBrowserStorage();
+        }
       } else {
         await this.initializeBrowserStorage();
       }
+
       console.log("✅ JSON Storage initialized successfully");
       console.log("🎉 Ready to store history data locally - no login needed!");
       return { success: true };
@@ -49,7 +61,8 @@ class JsonStorageService {
         // For Electron, check if we can write to file system
         return (
           window.electronAPI !== undefined &&
-          typeof window.electronAPI.getStoragePath === "function"
+          typeof window.electronAPI.getStoragePath === "function" &&
+          typeof window.electronAPI.ensureDirectory === "function"
         );
       } else {
         // For browser, localStorage is always available in modern browsers
@@ -65,7 +78,11 @@ class JsonStorageService {
 
   // Initialize Electron file system storage
   async initializeElectronStorage() {
-    if (!this.isElectron || !window.electronAPI.getStoragePath) {
+    if (
+      !this.isElectron ||
+      !window.electronAPI ||
+      !window.electronAPI.getStoragePath
+    ) {
       throw new Error("Electron API not available");
     }
 

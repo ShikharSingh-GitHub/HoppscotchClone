@@ -46,6 +46,14 @@ function App() {
       try {
         console.log("🚀 Initializing Hoppscotch Clone...");
 
+        // Small delay to ensure Electron API is fully loaded
+        if (window.electronAPI) {
+          console.log(
+            "🔌 Electron API detected, waiting for full initialization..."
+          );
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
         // Check storage availability first
         await checkAvailability();
 

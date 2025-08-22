@@ -1032,6 +1032,13 @@ async function startBackendServer() {
       OAUTH2_ENABLED: "true", // Enable OAuth2 support
     };
 
+    // Storage configuration
+    const storageEnv = {
+      STORAGE_TYPE: global.installationConfig?.storageType || "database",
+      JSON_BACKUP: global.installationConfig?.jsonBackup ? "true" : "false",
+      JSON_ENCRYPT: global.installationConfig?.jsonEncrypt ? "true" : "false",
+    };
+
     console.log("🔧 Environment variables for backend:", {
       ...dbEnv,
       DB_PASSWORD: dbEnv.DB_PASSWORD ? "***" : "(empty)",
@@ -1039,6 +1046,9 @@ async function startBackendServer() {
       JWT_EXPIRY: authEnv.JWT_EXPIRY,
       REQUIRE_AUTH: authEnv.REQUIRE_AUTH,
       OAUTH2_ENABLED: authEnv.OAUTH2_ENABLED,
+      STORAGE_TYPE: storageEnv.STORAGE_TYPE,
+      JSON_BACKUP: storageEnv.JSON_BACKUP,
+      JSON_ENCRYPT: storageEnv.JSON_ENCRYPT,
     });
 
     backendProcess = spawn("node", [serverPath], {
@@ -1051,6 +1061,8 @@ async function startBackendServer() {
         ...dbEnv,
         // Authentication configuration
         ...authEnv,
+        // Storage configuration
+        ...storageEnv,
         // Ensure PATH includes node
         PATH: process.env.PATH + ":/usr/local/bin:/opt/homebrew/bin",
       },
@@ -1816,6 +1828,104 @@ ipcMain.handle("get-backend-port", () => {
   const backendPort = global.installationConfig?.backendPort || 5001;
   console.log("📡 Frontend requesting backend port:", backendPort);
   return backendPort;
+});
+
+ipcMain.handle("get-storage-config", () => {
+  const storageConfig = {
+    storageType: global.installationConfig?.storageType || "database",
+    jsonBackup: global.installationConfig?.jsonBackup || false,
+    jsonEncrypt: global.installationConfig?.jsonEncrypt || false,
+    database: {
+      type: global.installationConfig?.dbType || "mysql",
+      host: global.installationConfig?.dbHost || "localhost",
+      port: global.installationConfig?.dbPort || 3306,
+      name: global.installationConfig?.dbName || "hoppscotch_clone",
+      username: global.installationConfig?.dbUsername || "root",
+      password: global.installationConfig?.dbPassword || "",
+    },
+  };
+  console.log("📡 Frontend requesting storage config:", storageConfig);
+  return storageConfig;
+});
+
+// JSON Storage IPC handlers
+ipcMain.handle("get-storage-path", () => {
+  const userDataPath = app.getPath("userData");
+  const jsonStoragePath = path.join(userDataPath, "json-storage");
+  console.log("📁 Frontend requesting storage path:", jsonStoragePath);
+  return jsonStoragePath;
+});
+
+ipcMain.handle("ensure-directory", async (event, dirPath) => {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      console.log("📁 Created directory:", dirPath);
+    }
+    return { success: true, path: dirPath };
+  } catch (error) {
+    console.error("❌ Failed to create directory:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("read-json-file", async (event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: true, data: [] };
+    }
+    const data = fs.readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(data);
+    console.log("📖 Read JSON file:", filePath);
+    return { success: true, data: parsed };
+  } catch (error) {
+    console.error("❌ Failed to read JSON file:", error);
+    return { success: false, error: error.message, data: [] };
+  }
+});
+
+ipcMain.handle("write-json-file", async (event, filePath, data) => {
+  try {
+    // Ensure directory exists
+    const dirPath = path.dirname(filePath);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+
+    // Write data with pretty formatting
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    console.log("💾 Wrote JSON file:", filePath);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Failed to write JSON file:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("backup-json-file", async (event, sourcePath, backupDir) => {
+  try {
+    if (!fs.existsSync(sourcePath)) {
+      return { success: false, error: "Source file not found" };
+    }
+
+    // Ensure backup directory exists
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Create backup filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = path.basename(sourcePath, ".json");
+    const backupPath = path.join(backupDir, `${fileName}-${timestamp}.json`);
+
+    // Copy file
+    fs.copyFileSync(sourcePath, backupPath);
+    console.log("💾 Created backup:", backupPath);
+    return { success: true, backupPath };
+  } catch (error) {
+    console.error("❌ Failed to create backup:", error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle("minimize-window", () => {
